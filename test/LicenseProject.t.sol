@@ -6,9 +6,12 @@ import "../src/License.sol";
 import "../src/LicenseProject.sol";
 
 contract LicenseProjectTest is Test {
+    event LicenseAdded(uint256 licenseId);
+
     LicenseProject public licenseProject;
     uint licenseId1;
     address testAccount;
+    address testAccount2;
 
     function setUp() public {
         licenseProject = new LicenseProject("A Project","LPRO",address(0));
@@ -18,6 +21,7 @@ contract LicenseProjectTest is Test {
         licenseId1 = licenseProject.addLicense((l));
 
         testAccount = vm.addr(0xABCD);
+        testAccount2 = address(0xABCDE);
     }
 
     function testPerpetualLicense() public {
@@ -26,5 +30,23 @@ contract LicenseProjectTest is Test {
         uint tokenId = licenseProject.buyLicense{value: 1 ether}(licenseId1);
         assert(tokenId>0);
         assert(licenseProject.checkValidity(tokenId));
+    }
+
+    // Any thoughts on why this one might keep failing?
+    // Tried testAccount 1 and 2.
+    function testFailAddLicenseIfNotOwner() public {
+        vm.prank(testAccount2);
+        
+        License l = new License("license name",1,1 ether,0);
+        licenseProject.addLicense(l);
+    }
+
+    function testExpectEmitAddLicenseEvent() public {
+        vm.expectEmit(false, false, false, true);
+
+        License l = new License("Evergreen Perpetual 2",1,1 ether,0);
+
+        emit LicenseAdded(1);
+        licenseProject.addLicense(l);
     }
 }

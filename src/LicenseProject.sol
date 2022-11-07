@@ -12,6 +12,7 @@ import "lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
 
 //one software product would have one project
 contract LicenseProject is ERC721, Ownable {
+    event LicenseAdded(uint256 licenseId);
 
     using Counters for Counters.Counter;
 
@@ -60,6 +61,9 @@ contract LicenseProject is ERC721, Ownable {
     //or we can pass all the License constructor params here as well
     function addLicense(License l) external onlyOwner returns(uint){
         licenses.push(l);
+
+        emit LicenseAdded(licenses.length-1);
+
         return licenses.length-1;
     }
 
