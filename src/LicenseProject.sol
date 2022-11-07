@@ -67,7 +67,7 @@ contract LicenseProject is ERC721, Ownable {
     function buyLicense(uint licenseProductId) payable public returns(uint) {
 
         require(licenseProductId < licenses.length,"product id is not valid");
-        License license = licenses[licenseProductId-1];
+        License license = licenses[licenseProductId];
 
         require(token == address(0), "only accepts ether");
         //we need to send back a refund if paying more

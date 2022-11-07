@@ -13,7 +13,7 @@ contract LicenseProjectTest is Test {
     function setUp() public {
         licenseProject = new LicenseProject("A Project","LPRO",address(0));
 
-        //a license with one cycle, worth 10 ether, and no duration ie. perpetual
+        //a license with one cycle, worth 1 ether, and no duration ie. perpetual
         License l = new License("Evergreen Perpetual",1,1 ether,0);        
         licenseId1 = licenseProject.addLicense((l));
 
@@ -24,7 +24,7 @@ contract LicenseProjectTest is Test {
         vm.deal(testAccount,10 ether);
         vm.prank(testAccount);
         uint tokenId = licenseProject.buyLicense{value: 1 ether}(licenseId1);
-        //assert(licenseProject.checkValidity(0));
         assert(tokenId>0);
+        assert(licenseProject.checkValidity(tokenId));
     }
 }
