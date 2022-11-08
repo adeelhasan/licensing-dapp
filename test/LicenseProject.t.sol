@@ -11,7 +11,6 @@ contract LicenseProjectTest is Test {
     LicenseProject public licenseProject;
     uint licenseId1;
     address testAccount;
-    address testAccount2;
 
     function setUp() public {
         licenseProject = new LicenseProject("A Project","LPRO",address(0));
@@ -21,7 +20,6 @@ contract LicenseProjectTest is Test {
         licenseId1 = licenseProject.addLicense((l));
 
         testAccount = vm.addr(0xABCD);
-        testAccount2 = address(0xABCDE);
     }
 
     function testPerpetualLicense() public {
@@ -35,9 +33,10 @@ contract LicenseProjectTest is Test {
     // Any thoughts on why this one might keep failing?
     // Tried testAccount 1 and 2.
     function testFailAddLicenseIfNotOwner() public {
-        vm.prank(testAccount2);
-        
         License l = new License("license name",1,1 ether,0);
+
+        vm.prank(testAccount);
+
         licenseProject.addLicense(l);
     }
 
