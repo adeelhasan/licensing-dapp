@@ -29,4 +29,70 @@ contract LicenseProjectTest is Test {
         assert(licenseProject.ownerOf(tokenId) == testAccount);
         vm.stopPrank();
     }
+
+    function testFailAddLicenseIfNotOwner() public {
+        vm.prank(testAccount);
+        licenseProject.addLicense("license name",1,0,1 ether);
+    }
+
+    
+/*     function testExpectEmitAddLicenseEvent() public {
+        vm.expectEmit(false, false, false, true);
+        uint licenseId = licenseProject.addLicense("Evergreen Perpetual 2",1,0,1 ether);
+        emit LicenseAdded(licenseId);
+    }
+ */
+    function testPaymentByToken() public {
+        //AR
+
+    }
+
+    function testValidityFailAfterCycleEnd() public {
+        //AR
+
+    }
+
+    function testValidityFailBeforeCycleStart() public {
+        //AR
+
+    }
+
+    function testValidityPassBeforeCycleEnd() public {
+        //AR
+
+    }
+
+
+    function testCycleExtendsIfPayingBeforeEndDate() public {
+        //AR
+
+    }
+
+    function testFailIfPayingTwiceForPerpetualLicense() public {
+        assert(false);
+
+    }
+
+    function testFailWhenCheckingValidityFromNonLicensee() public {
+        assert(false);
+
+    }
+
+    function testShouldNotBeAbletoPayWithEtherAndTokensAtSameTime() public {
+
+    }
+
+    function testAllLicenseListingOnlyByOwner() public {
+
+    }
+
+    function testAddingLicenseOnlyByOwner() public {
+        
+    }
+
+    function testGiftLicense() public {
+
+    }
+
+
 }

@@ -33,6 +33,8 @@ contract LicenseProject is ERC721, Ownable {
         Cycle[] cycles;
     }
 
+    event LicenseAdded(uint licenseId);
+
     Counters.Counter private _tokenIds;
 
     //ERC20Token for payments
@@ -61,7 +63,11 @@ contract LicenseProject is ERC721, Ownable {
 
     function addLicense(bytes32 name, uint maxCycles, uint cycleLength, uint price) onlyOwner external returns(uint) {
         _licenses.push(License(name,maxCycles,cycleLength,price,true));
-        return _licenses.length-1;
+        uint licenseId = _licenses.length-1;
+
+        emit LicenseAdded(licenseId);
+        
+        return licenseId;
     }
 
     function buyLicense(uint tokenId, uint licenseProductId, uint amount) payable public returns(uint) {
@@ -141,6 +147,14 @@ contract LicenseProject is ERC721, Ownable {
                 allLicenses[i] = _licenses[i];
         }
         return allLicenses;
+    }
+
+    function myLicenses() external view returns(Licensee[] memory) {
+        //the license info (name, id) should also go back with this
+        //cycles have to be included too
+        //the token ids would go back too ... all tokenIds owned by msg.sender
+        Licensee[] memory myLicenses = new Licensee[](1);
+        return myLicenses;
     }
 
 
