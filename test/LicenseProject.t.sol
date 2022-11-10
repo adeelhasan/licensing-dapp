@@ -148,5 +148,21 @@ contract LicenseProjectTest is Test {
         vm.stopPrank();
     }
 
+    function testTokenTransferShouldPreserveValidity() public {
+        vm.deal(testAccount,10 ether);
+        vm.startPrank(testAccount);
+        uint tokenId = licenseProject.buyLicense{value: 1 ether}(0,licenseId1,0);
+        assert(tokenId>0);
+        assert(licenseProject.checkValidity(tokenId));
+        licenseProject.approve(testAccount2, tokenId);
+        licenseProject.transferFrom(testAccount, testAccount2, tokenId);
+        vm.stopPrank();
+        vm.prank(testAccount2);
+        require(licenseProject.checkValidity(tokenId),"license was not transfered with the token");
+        vm.expectRevert("valid for user of record, not token owner");
+        vm.prank(testAccount);
+        licenseProject.checkValidity(tokenId);
+    }
+
 
 }
