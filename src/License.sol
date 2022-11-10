@@ -25,11 +25,6 @@ contract License {
 }
 
 
-//other features to think about
-//upgrade subscription, downgrade
-//not supported: pause/resume your subscription
-
-
 
 
 

@@ -6,6 +6,8 @@ import "openzeppelin-contracts/utils/Counters.sol";
 import "openzeppelin-contracts/access/Ownable.sol";
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/token/ERC721/ERC721.sol";
+import "forge-std/Test.sol";
+
 
 //one software product would have one project
 contract LicenseProject is ERC721, Ownable {
@@ -52,13 +54,13 @@ contract LicenseProject is ERC721, Ownable {
         require(this.ownerOf(tokenId) != address(0),"token id has not been minted");
 
         Licensee memory l = licensees[tokenId];
-        require(l.user == msg.sender,"valid for user of record, not necessarily the owner");
+        require(l.user == msg.sender,"valid for user of record, not token owner");
 
         Cycle memory mostRecentCycle = l.cycles[l.cycles.length-1];
 
-        return (((mostRecentCycle.status == CycleStatus.Free)) || (mostRecentCycle.status == CycleStatus.Paid))
-             && ((mostRecentCycle.endTime==0) || ((block.timestamp > mostRecentCycle.startTime)
-              && (block.timestamp < mostRecentCycle.endTime)));
+        return (mostRecentCycle.status == CycleStatus.Free || mostRecentCycle.status == CycleStatus.Paid)
+             && (mostRecentCycle.endTime==0 ||
+              (block.timestamp >= mostRecentCycle.startTime && block.timestamp <= mostRecentCycle.endTime));
     }
 
     function addLicense(bytes32 name, uint maxCycles, uint cycleLength, uint price) onlyOwner external returns(uint) {
@@ -109,7 +111,7 @@ contract LicenseProject is ERC721, Ownable {
         if (licensee.cycles.length == 0) {
             uint endTime;
             if (cycleLength > 0)
-                endTime == block.timestamp + cycleLength;
+                endTime = block.timestamp + cycleLength;
 
             licensee.cycles.push(Cycle(CycleStatus.Paid,block.timestamp,endTime));
             licensee.user = user;
