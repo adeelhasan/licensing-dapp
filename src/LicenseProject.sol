@@ -8,7 +8,6 @@ import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/token/ERC721/ERC721.sol";
 import "forge-std/Test.sol";
 
-
 //one software product would have one project
 contract LicenseProject is ERC721, Ownable {
 
@@ -33,6 +32,12 @@ contract LicenseProject is ERC721, Ownable {
         uint licenseIndex; //Discussion, instead of index, we can have a license code?
         address user;
         Cycle[] cycles;
+    }
+
+    struct LicenseInfo {
+        uint tokenId;
+        Licensee licenseeInfo;
+        License licenseinfo;
     }
 
     event LicenseAdded(uint licenseId);
@@ -150,14 +155,21 @@ contract LicenseProject is ERC721, Ownable {
         }
         return allLicenses;
     }
-
-    function myLicenses() external view returns(Licensee[] memory) {
-        //the license info (name, id) should also go back with this
-        //cycles have to be included too
-        //the token ids would go back too ... all tokenIds owned by msg.sender
-        Licensee[] memory myLicenses = new Licensee[](1);
-        return myLicenses;
+    
+    function myLicenses() external view returns(LicenseInfo[100] memory) {
+        //Added a static length of 100 to the array as push function was not 
+        //supported for array stored in memory and storage variables cannot be returned.
+        LicenseInfo[100] memory myLicensesArr;
+        uint j = 0;
+        for (uint i=1; i<=_tokenIds.current(); i++){
+            if(licensees[i].user == msg.sender){
+                myLicensesArr[j] = LicenseInfo(i,licensees[i], _licenses[licensees[i].licenseIndex]);
+                j++;
+                if(j == 99){
+                    break;
+                }
+            }
+        }
+        return myLicensesArr;
     }
-
-
 }
