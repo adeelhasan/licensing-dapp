@@ -195,5 +195,6 @@ contract LicenseProjectTest is Test {
         vm.expectRevert("only exact change taken");
         uint newTokenId = licenseProject.buyLicense{value: 2 ether}(0,licenseId1,0);
         vm.stopPrank();
+    }
 
 }
