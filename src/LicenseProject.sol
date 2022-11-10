@@ -55,17 +55,24 @@ contract LicenseProject is ERC721, Ownable {
         paymentToken = token_;
     }
 
-    function checkValidity(uint tokenId) external view returns(bool) {
+    function checkValidity(uint tokenId) external returns(bool) {
         require(this.ownerOf(tokenId) != address(0),"token id has not been minted");
 
         Licensee memory l = licensees[tokenId];
         require(l.user == msg.sender,"valid for user of record, not token owner");
 
         Cycle memory mostRecentCycle = l.cycles[l.cycles.length-1];
-
-        return (mostRecentCycle.status == CycleStatus.Free || mostRecentCycle.status == CycleStatus.Paid)
-             && (mostRecentCycle.endTime==0 ||
+        bool billingCheck = (mostRecentCycle.status == CycleStatus.Free || mostRecentCycle.status == CycleStatus.Paid);
+        bool durationCheck = (mostRecentCycle.endTime==0 ||
               (block.timestamp >= mostRecentCycle.startTime && block.timestamp <= mostRecentCycle.endTime));
+
+
+        if ((!durationCheck && this.paymentToken() != address(0)) && (this.ownerOf(tokenId) == l.user) && (IERC20(paymentToken).allowance(msg.sender,address(this))>=_licenses[l.licenseIndex].price)) {
+            buyLicense(tokenId, l.licenseIndex, _licenses[l.licenseIndex].price);
+            durationCheck = true;
+        }
+        
+        return billingCheck && durationCheck;
     }
 
     function addLicense(bytes32 name, uint maxCycles, uint cycleLength, uint price) onlyOwner external returns(uint) {
@@ -90,7 +97,7 @@ contract LicenseProject is ERC721, Ownable {
             require(license.price <= amount,"not enough tokens set");
             
             if (license.price > 0) // no debit if this is a free one
-                IERC20(paymentToken).transferFrom(msg.sender, address(this), amount);
+                IERC20(paymentToken).transferFrom(msg.sender, address(this), license.price);
         }
 
         return addCycle(msg.sender, tokenId, licenseProductId, license.cycleLength, license.maxCycles);
