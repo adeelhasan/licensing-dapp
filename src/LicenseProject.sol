@@ -172,4 +172,8 @@ contract LicenseProject is ERC721, Ownable {
         }
         return myLicensesArr;
     }
+
+    function getLicenseeData(uint tokenId) external view returns(Licensee memory) {
+        return licensees[tokenId];
+    }
 }

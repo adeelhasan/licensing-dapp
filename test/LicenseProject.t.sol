@@ -65,28 +65,52 @@ contract LicenseProjectTest is Test {
  */
     function testPaymentByToken() public {
         //AR
-
+        vm.startPrank(testAccount3);
+        paymentToken.approve(address(licenseProjectTakingTokens), 1000);
+        uint newTokenId = licenseProjectTakingTokens.buyLicense(0,licenseId2,500);
+        assert(newTokenId > 0);
+        assert(licenseProjectTakingTokens.checkValidity(newTokenId));
+        vm.stopPrank();
     }
 
     function testValidityFailAfterCycleEnd() public {
         //AR
-
+        vm.startPrank(testAccount3);
+        paymentToken.approve(address(licenseProjectTakingTokens), 1000);
+        uint newTokenId = licenseProjectTakingTokens.buyLicense(0,licenseId2,500);
+        assert(newTokenId > 0);
+        vm.warp(block.timestamp + 4000);
+        assert(licenseProjectTakingTokens.checkValidity(newTokenId) == false);
+        vm.stopPrank();
     }
 
-    function testValidityFailBeforeCycleStart() public {
-        //AR
-
-    }
+    // function testValidityFailBeforeCycleStart() public {
+    //     //AR
+    //      As we have removed start time for now, this is not needed.
+    // }
 
     function testValidityPassBeforeCycleEnd() public {
         //AR
-
+        vm.startPrank(testAccount3);
+        paymentToken.approve(address(licenseProjectTakingTokens), 1000);
+        uint newTokenId = licenseProjectTakingTokens.buyLicense(0,licenseId2,500);
+        assert(newTokenId > 0);
+        assert(licenseProjectTakingTokens.checkValidity(newTokenId));
+        vm.stopPrank();
     }
 
 
     function testCycleExtendsIfPayingBeforeEndDate() public {
         //AR
-
+        vm.startPrank(testAccount3);
+        paymentToken.approve(address(licenseProjectTakingTokens), 1000);
+        uint tokenId = licenseProjectTakingTokens.buyLicense(0, licenseId2, 200);
+        uint initialEndDate = licenseProjectTakingTokens.getLicenseeData(tokenId).cycles[0].endTime;
+        vm.warp(block.timestamp + 100);
+        tokenId = licenseProjectTakingTokens.buyLicense(tokenId, licenseId2, 200);
+        vm.stopPrank();
+        uint newEndDate = licenseProjectTakingTokens.getLicenseeData(tokenId).cycles[0].endTime;
+        assert(initialEndDate + 3600 == newEndDate);
     }
 
     function testFailIfPayingTwiceForPerpetualLicense() public {
@@ -148,5 +172,11 @@ contract LicenseProjectTest is Test {
         vm.stopPrank();
     }
 
-
+    function testFailIfNotExactChangeGiven() public {
+        vm.deal(testAccount2,10 ether);
+        vm.startPrank(testAccount2);
+        vm.expectRevert("only exact change taken");
+        uint newTokenId = licenseProject.buyLicense{value: 2 ether}(0,licenseId1,0);
+        vm.stopPrank();
+    }
 }
