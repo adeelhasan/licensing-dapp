@@ -173,6 +173,30 @@ contract LicenseProject is ERC721, Ownable {
         return myLicensesArr;
     }
 
+    function _afterTokenTransfer(
+        address from,
+        address to,
+        uint256 firstTokenId,
+        uint256 batchSize
+    ) internal override virtual {
+        require(batchSize == 1,"bulk transfers are not supported for licenses");
+
+        Licensee memory l = licensees[firstTokenId];
+
+        //if this is fired from a new mint, then there will be no cycles as yet
+        if (l.cycles.length > 0) {
+            Cycle memory mostRecentCycle = l.cycles[l.cycles.length-1];
+
+            if (mostRecentCycle.endTime==0 ||
+                (block.timestamp >= mostRecentCycle.startTime &&
+                block.timestamp <= mostRecentCycle.endTime))
+                {
+                    licensees[firstTokenId].user = to;
+                }
+
+            }
+    }
+
     function getLicenseeData(uint tokenId) external view returns(Licensee memory) {
         return licensees[tokenId];
     }
