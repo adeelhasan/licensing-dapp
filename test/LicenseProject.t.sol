@@ -30,6 +30,7 @@ contract LicenseProjectTest is Test {
 
         //a license with one cycle, worth 1 ether, and no duration ie. perpetual
         licenseId1 = licenseProject.addLicense("Evergreen Perpetual",1,0,1 ether);
+        licenseId3 = licenseProject.addLicense("Evergreen Perpetual Again",1,0,1 ether);
 
         testAccount = vm.addr(0xABCD);
         testAccount2 = vm.addr(0xDABC);
@@ -216,7 +217,35 @@ contract LicenseProjectTest is Test {
     }
 
     function testMyLicensesList() public {
-        
+        vm.deal(testAccount2,10 ether);
+        vm.startPrank(testAccount2);
+        uint tokenId1 = licenseProject.buyLicense{value: 1 ether}(0,licenseId1,0);
+        uint tokenId2 = licenseProject.buyLicense{value: 1 ether}(0,licenseId3,0);
+        LicenseStructs.LicenseInfo[100] memory res = licenseProject.myLicenses();
+        require(res[0].tokenId == tokenId1, "Token Id don't match");
+        require(res[1].tokenId == tokenId2, "Token Id don't match");
+        LicenseStructs.License memory license1 = licenseProject.getLicenseData(licenseId1);
+        LicenseStructs.License memory license3 = licenseProject.getLicenseData(licenseId3);
+        LicenseStructs.Licensee memory licensee1 = licenseProject.getLicenseeData(tokenId1);
+        LicenseStructs.Licensee memory licensee2 = licenseProject.getLicenseeData(tokenId2);
+
+        require(license1.name == res[0].licenseinfo.name, "License Name don't match");
+        require(license1.maxCycles == res[0].licenseinfo.maxCycles, "License maxCycles don't match");
+        require(license1.cycleLength == res[0].licenseinfo.cycleLength, "License cycleLength don't match");
+        require(license1.price == res[0].licenseinfo.price, "License price don't match");
+        require(license1.active == res[0].licenseinfo.active, "License active don't match");
+        require(license3.name == res[1].licenseinfo.name, "License Name don't match");
+        require(license3.maxCycles == res[1].licenseinfo.maxCycles, "License maxCycles don't match");
+        require(license3.cycleLength == res[1].licenseinfo.cycleLength, "License cycleLength don't match");
+        require(license3.price == res[1].licenseinfo.price, "License price don't match");
+        require(license3.active == res[1].licenseinfo.active, "License active don't match");
+
+        require(licensee1.licenseIndex == res[0].licenseeInfo.licenseIndex, "Licensee licenseIndex don't match");
+        require(licensee1.user == res[0].licenseeInfo.user, "Licensee user don't match");
+        require(licensee1.cycles.length == res[0].licenseeInfo.cycles.length, "Licensee cycles don't match");
+        require(licensee2.licenseIndex == res[1].licenseeInfo.licenseIndex, "Licensee licenseIndex don't match");
+        require(licensee2.user == res[1].licenseeInfo.user, "Licensee user don't match");
+        require(licensee2.cycles.length == res[1].licenseeInfo.cycles.length, "Licensee cycles don't match");
     }
 
 }
