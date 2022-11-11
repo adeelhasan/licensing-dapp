@@ -7,7 +7,7 @@ import "openzeppelin-contracts/access/Ownable.sol";
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/token/ERC721/ERC721.sol";
 import "forge-std/Test.sol";
-import "../lib/LicenseStructs.sol";
+import "./LicenseStructs.sol";
 
 //one software product would have one project
 contract LicenseProject is ERC721, Ownable {

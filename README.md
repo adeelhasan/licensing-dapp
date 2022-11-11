@@ -1,8 +1,8 @@
 # Decentralized Licensing 
 
-Licensing can be thought of as a permission check. For example, in the context of software licenses there can be a test if the executable has been paid for. Or a subscription or membership is current or expired. This project aims to provide a mechanism for licensing.
+Licensing can be thought of as a permission check. For example, in the context of software licenses there can be a runtime test if the executable has been paid for. Or for content services, whether a subscription or membership is current or not. This project aims to provide a mechanism for licensing.
 
-The provider eg. a software vendor can setup a variety of licenses in a project. 
+The provider eg. a software vendor can setup a variety of licenses which are grouped in a project.
 
 
 TODO: add walkthrough of licenses
