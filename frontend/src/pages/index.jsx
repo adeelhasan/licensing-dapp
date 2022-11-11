@@ -13,9 +13,10 @@ const fallbackImage = "http:///i.imgur.com/hfM1J8s.png";
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [nfts, setNfts] = useState([]);
+  const [licenses, setLicenses] = useState([]);
 
   const account = useAccount();
-  // const { dcWarriorsContract, stakingContract } = useContracts();
+  const { licensingContract } = useContracts();
 
   const fetchNftDetails = async (nftURL) => {
     try {
@@ -58,9 +59,18 @@ export default function Home() {
     setIsLoading(false);
   };
 
-  // useEffect(() => {
-  //   loadNfts();
-  // }, [account]);
+  const loadLicenses = async () => {
+    setIsLoading(true);
+    const licensesRes = await licensingContract.currentLicences();
+    setLicenses(licensesRes);
+    setIsLoading(false);
+  }
+
+  useEffect(() => {
+    loadLicenses();
+  }, [account]);
+
+  console.log("Licenses", licenses);
 
   return (
     <div className="mx-auto max-w-7xl p-4">
@@ -68,7 +78,7 @@ export default function Home() {
         <div className="container mx-auto px-5 pt-12 pb-24">
           {!isLoading && (
             <div className="grid grid-cols-12 gap-8">
-              {nfts.map((nft) => {
+              {/* {nfts.map((nft) => {
                 return (
                   <NFT
                     key={nft.tokenId}
@@ -79,7 +89,7 @@ export default function Home() {
                     setNfts={setNfts}
                   />
                 );
-              })}
+              })} */}
             </div>
           )}
           {isLoading && (
