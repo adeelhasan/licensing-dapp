@@ -7,38 +7,12 @@ import "openzeppelin-contracts/access/Ownable.sol";
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/token/ERC721/ERC721.sol";
 import "forge-std/Test.sol";
+import "../lib/LicenseStructs.sol";
 
 //one software product would have one project
 contract LicenseProject is ERC721, Ownable {
 
     using Counters for Counters.Counter;
-
-    enum CycleStatus { Unpaid, Free, Paid }
-    struct Cycle {
-        CycleStatus status;
-        uint startTime; //a 0 would mean start immediately
-        uint endTime;   //a 0 would mean perpetual
-    }
-
-    struct License {
-        bytes32 name;
-        uint maxCycles;
-        uint cycleLength;
-        uint price;
-        bool active;
-    }
-
-    struct Licensee {
-        uint licenseIndex; //Discussion, instead of index, we can have a license code?
-        address user;
-        Cycle[] cycles;
-    }
-
-    struct LicenseInfo {
-        uint tokenId;
-        Licensee licenseeInfo;
-        License licenseinfo;
-    }
 
     event LicenseAdded(uint licenseId);
     event LicenseBought(address indexed licensee, uint tokenId, uint licenseId);
@@ -51,9 +25,9 @@ contract LicenseProject is ERC721, Ownable {
     //ERC20Token for payments
     address public paymentToken; 
 
-    License[] private _licenses;
+    LicenseStructs.License[] private _licenses;
     
-    mapping(uint => Licensee) public licensees;
+    mapping(uint => LicenseStructs.Licensee) public licensees;
 
     constructor(string memory name, string memory symbol, address token_) ERC721(name,symbol) {
         paymentToken = token_;
@@ -62,11 +36,11 @@ contract LicenseProject is ERC721, Ownable {
     function checkValidity(uint tokenId) external returns(bool) {
         require(this.ownerOf(tokenId) != address(0),"token id has not been minted");
 
-        Licensee memory l = licensees[tokenId];
+        LicenseStructs.Licensee memory l = licensees[tokenId];
         require(l.user == msg.sender,"valid for user of record, not token owner");
 
-        Cycle memory mostRecentCycle = l.cycles[l.cycles.length-1];
-        bool billingCheck = (mostRecentCycle.status == CycleStatus.Free || mostRecentCycle.status == CycleStatus.Paid);
+        LicenseStructs.Cycle memory mostRecentCycle = l.cycles[l.cycles.length-1];
+        bool billingCheck = (mostRecentCycle.status == LicenseStructs.CycleStatus.Free || mostRecentCycle.status == LicenseStructs.CycleStatus.Paid);
         bool durationCheck = (mostRecentCycle.endTime==0 ||
               (block.timestamp >= mostRecentCycle.startTime && block.timestamp <= mostRecentCycle.endTime));
 
@@ -82,7 +56,7 @@ contract LicenseProject is ERC721, Ownable {
     }
 
     function addLicense(bytes32 name, uint maxCycles, uint cycleLength, uint price) onlyOwner external returns(uint) {
-        _licenses.push(License(name,maxCycles,cycleLength,price,true));
+        _licenses.push(LicenseStructs.License(name,maxCycles,cycleLength,price,true));
         uint licenseId = _licenses.length-1;
 
         emit LicenseAdded(licenseId);
@@ -92,7 +66,7 @@ contract LicenseProject is ERC721, Ownable {
 
     function buyLicense(uint tokenId, uint licenseProductId, uint amount) payable public returns(uint) {
         require(licenseProductId < _licenses.length,"product id is not valid");
-        License memory license = _licenses[licenseProductId];
+        LicenseStructs.License memory license = _licenses[licenseProductId];
 
         if (paymentToken == address(0)) {
             require(license.price == msg.value,"only exact change taken");
@@ -111,7 +85,7 @@ contract LicenseProject is ERC721, Ownable {
 
     function giftLicense(uint licenseProductId, address user) external onlyOwner returns(uint) {
         require(licenseProductId < _licenses.length,"product id is not valid");
-        License memory license = _licenses[licenseProductId];
+        LicenseStructs.License memory license = _licenses[licenseProductId];
         uint tokenId =  addCycle(user, 0, licenseProductId, license.cycleLength, license.maxCycles);
 
         emit LicenseGifted(user, tokenId);
@@ -125,7 +99,7 @@ contract LicenseProject is ERC721, Ownable {
             tokenId = _tokenIds.current();
             _safeMint(user, tokenId);
         }
-        Licensee storage licensee = licensees[tokenId];
+        LicenseStructs.Licensee storage licensee = licensees[tokenId];
 
         require(licensee.cycles.length < maxCycles);
 
@@ -134,7 +108,7 @@ contract LicenseProject is ERC721, Ownable {
             if (cycleLength > 0)
                 endTime = block.timestamp + cycleLength;
 
-            licensee.cycles.push(Cycle(CycleStatus.Paid,block.timestamp,endTime));
+            licensee.cycles.push(LicenseStructs.Cycle(LicenseStructs.CycleStatus.Paid,block.timestamp,endTime));
             licensee.user = user;
             licensee.licenseIndex = licenseProductId;
             licensees[tokenId] = licensee;
@@ -143,23 +117,23 @@ contract LicenseProject is ERC721, Ownable {
         }
         else
         {
-            Cycle memory mostRecentCycle = licensee.cycles[licensee.cycles.length-1];
+            LicenseStructs.Cycle memory mostRecentCycle = licensee.cycles[licensee.cycles.length-1];
 
             require(mostRecentCycle.endTime != 0,"cycle is already perpetual");
             
             if (block.timestamp < mostRecentCycle.endTime)
                 licensee.cycles[licensee.cycles.length-1].endTime += cycleLength;
             else
-                licensee.cycles.push(Cycle(CycleStatus.Paid,block.timestamp,block.timestamp + cycleLength));
-
+                licensee.cycles.push(LicenseStructs.Cycle(LicenseStructs.CycleStatus.Paid,block.timestamp,block.timestamp + cycleLength));
+            
             emit LicenseExtended(msg.sender, tokenId, licenseProductId);
         }
         return tokenId;
     }
 
-    function currentLicences() external view returns(License[] memory) {
+    function currentLicences() external view returns(LicenseStructs.License[] memory) {
         uint count = _licenses.length;
-        License[] memory activeLicenses = new License[](count);
+        LicenseStructs.License[] memory activeLicenses = new LicenseStructs.License[](count);
         for (uint i; i<_licenses.length; i++){
             if (_licenses[i].active)
                 activeLicenses[i] = _licenses[i];
@@ -167,23 +141,23 @@ contract LicenseProject is ERC721, Ownable {
         return activeLicenses;
     }
 
-    function allLicences() onlyOwner external view returns(License[] memory) {
+    function allLicences() onlyOwner external view returns(LicenseStructs.License[] memory) {
         uint count = _licenses.length;
-        License[] memory allLicenses = new License[](count);
+        LicenseStructs.License[] memory allLicenses = new LicenseStructs.License[](count);
         for (uint i; i<_licenses.length; i++){
                 allLicenses[i] = _licenses[i];
         }
         return allLicenses;
     }
     
-    function myLicenses() external view returns(LicenseInfo[100] memory) {
+    function myLicenses() external view returns(LicenseStructs.LicenseInfo[100] memory) {
         //Added a static length of 100 to the array as push function was not 
         //supported for array stored in memory and storage variables cannot be returned.
-        LicenseInfo[100] memory myLicensesArr;
+        LicenseStructs.LicenseInfo[100] memory myLicensesArr;
         uint j = 0;
         for (uint i=1; i<=_tokenIds.current(); i++){
             if(licensees[i].user == msg.sender){
-                myLicensesArr[j] = LicenseInfo(i,licensees[i], _licenses[licensees[i].licenseIndex]);
+                myLicensesArr[j] = LicenseStructs.LicenseInfo(i,licensees[i], _licenses[licensees[i].licenseIndex]);
                 j++;
                 if(j == 99){
                     break;
@@ -201,11 +175,11 @@ contract LicenseProject is ERC721, Ownable {
     ) internal override virtual {
         require(batchSize == 1,"bulk transfers are not supported for licenses");
 
-        Licensee memory l = licensees[firstTokenId];
+        LicenseStructs.Licensee memory l = licensees[firstTokenId];
 
         //if this is fired from a new mint, then there will be no cycles as yet
         if (l.cycles.length > 0) {
-            Cycle memory mostRecentCycle = l.cycles[l.cycles.length-1];
+            LicenseStructs.Cycle memory mostRecentCycle = l.cycles[l.cycles.length-1];
 
             if (mostRecentCycle.endTime==0 ||
                 (block.timestamp >= mostRecentCycle.startTime &&
@@ -217,7 +191,7 @@ contract LicenseProject is ERC721, Ownable {
             }
     }
 
-    function getLicenseeData(uint tokenId) external view returns(Licensee memory) {
+    function getLicenseeData(uint tokenId) external view returns(LicenseStructs.Licensee memory) {
         return licensees[tokenId];
     }
 }
