@@ -41,6 +41,10 @@ contract LicenseProject is ERC721, Ownable {
     }
 
     event LicenseAdded(uint licenseId);
+    event LicenseBought(address indexed licensee, uint tokenId, uint licenseId);
+    event LicenseExtended(address indexed licensee, uint tokenId, uint licenseId);
+    event LicenseGifted(address indexed licensee, uint tokenId);
+    event AutoRenewed(address indexed liscensee , uint licenseId, uint tokensPaid);
 
     Counters.Counter private _tokenIds;
 
@@ -68,8 +72,10 @@ contract LicenseProject is ERC721, Ownable {
 
 
         if ((!durationCheck && this.paymentToken() != address(0)) && (this.ownerOf(tokenId) == l.user) && (IERC20(paymentToken).allowance(msg.sender,address(this))>=_licenses[l.licenseIndex].price)) {
-            buyLicense(tokenId, l.licenseIndex, _licenses[l.licenseIndex].price);
+            buyLicense(tokenId, l.licenseIndex, _licenses[l.licenseIndex].price);            
             durationCheck = true;
+
+            emit AutoRenewed(msg.sender, l.licenseIndex, _licenses[l.licenseIndex].price);
         }
         
         return billingCheck && durationCheck;
@@ -106,8 +112,11 @@ contract LicenseProject is ERC721, Ownable {
     function giftLicense(uint licenseProductId, address user) external onlyOwner returns(uint) {
         require(licenseProductId < _licenses.length,"product id is not valid");
         License memory license = _licenses[licenseProductId];
+        uint tokenId =  addCycle(user, 0, licenseProductId, license.cycleLength, license.maxCycles);
 
-        return addCycle(user, 0, licenseProductId, license.cycleLength, license.maxCycles);
+        emit LicenseGifted(user, tokenId);
+
+        return tokenId;
     }
 
     function addCycle(address user, uint tokenId,uint licenseProductId,uint cycleLength, uint maxCycles) private returns(uint) {
@@ -129,6 +138,8 @@ contract LicenseProject is ERC721, Ownable {
             licensee.user = user;
             licensee.licenseIndex = licenseProductId;
             licensees[tokenId] = licensee;
+
+            emit LicenseBought(msg.sender, tokenId, licenseProductId);
         }
         else
         {
@@ -140,6 +151,8 @@ contract LicenseProject is ERC721, Ownable {
                 licensee.cycles[licensee.cycles.length-1].endTime += cycleLength;
             else
                 licensee.cycles.push(Cycle(CycleStatus.Paid,block.timestamp,block.timestamp + cycleLength));
+
+            emit LicenseExtended(msg.sender, tokenId, licenseProductId);
         }
         return tokenId;
     }
