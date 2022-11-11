@@ -6,7 +6,7 @@ import "forge-std/console.sol";
 import "src/License.sol";
 import "src/LicenseProject.sol";
 import "openzeppelin-contracts/token/ERC20/ERC20.sol";
-import "../lib/LicenseStructs.sol";
+import "../src/LicenseStructs.sol";
 
 contract PaymentToken is ERC20 {
     constructor(string memory name, string memory symbol, uint initialSupply) ERC20(name,symbol) public {
