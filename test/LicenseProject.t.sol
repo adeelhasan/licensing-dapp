@@ -6,6 +6,7 @@ import "forge-std/console.sol";
 import "src/License.sol";
 import "src/LicenseProject.sol";
 import "openzeppelin-contracts/token/ERC20/ERC20.sol";
+import "../lib/LicenseStructs.sol";
 
 contract PaymentToken is ERC20 {
     constructor(string memory name, string memory symbol, uint initialSupply) ERC20(name,symbol) public {
@@ -188,12 +189,34 @@ contract LicenseProjectTest is Test {
         licenseProject.checkValidity(tokenId);
     }
 
-
     function testFailIfNotExactChangeGiven() public {
         vm.deal(testAccount2,10 ether);
         vm.startPrank(testAccount2);
         uint newTokenId = licenseProject.buyLicense{value: 2 ether}(0,licenseId1,0);
         vm.stopPrank();
+    }
+
+    function testAllLicensesList() public {
+        LicenseProject licenseProject4;
+        licenseProject4 = new LicenseProject("List Project","LIPRO",address(0));
+        uint numOfLicenses = 3;
+        uint[] memory licenseIndexArr = new uint[](numOfLicenses);
+        for(uint i; i < numOfLicenses; i++){
+            licenseIndexArr[i] = licenseProject4.addLicense("Evergreen Perpetual",1,0,1 ether);
+        }
+        LicenseStructs.License[] memory res;
+        res = licenseProject4.allLicences();
+        for(uint i; i < numOfLicenses; i++){
+            require(licenseProject4.getLicenseData(licenseIndexArr[i]).name == res[i].name, "License Name don't match");
+            require(licenseProject4.getLicenseData(licenseIndexArr[i]).maxCycles == res[i].maxCycles, "License maxCycles don't match");
+            require(licenseProject4.getLicenseData(licenseIndexArr[i]).cycleLength == res[i].cycleLength, "License cycleLength don't match");
+            require(licenseProject4.getLicenseData(licenseIndexArr[i]).price == res[i].price, "License price don't match");
+            require(licenseProject4.getLicenseData(licenseIndexArr[i]).active == res[i].active, "License active don't match");
+        }
+    }
+
+    function testMyLicensesList() public {
+        
     }
 
 }

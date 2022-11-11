@@ -181,4 +181,8 @@ contract LicenseProject is ERC721, Ownable {
     function getLicenseeData(uint tokenId) external view returns(LicenseStructs.Licensee memory) {
         return licensees[tokenId];
     }
+
+    function getLicenseData(uint licenseIndex) external view returns(LicenseStructs.License memory) {
+        return _licenses[licenseIndex];
+    }
 }
