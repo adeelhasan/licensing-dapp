@@ -7,6 +7,21 @@ The provider eg. a software vendor can setup a variety of licenses which are gro
 
 TODO: add walkthrough of licenses
 
+## Installation
+
+Install foundry if needed
+
+```
+git clone --recurse-submodules CLONE_URL
+```
+
+If the standard library did not come across, install that
+```
+forge install foundry-rs/forge-std --no-commit
+```
+
+then forge build and forge test.
+
 ## Deployment of Test Contracts:
 
 - first start anvil in a separate console
