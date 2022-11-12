@@ -13,6 +13,7 @@ const zeroAddress = "0x0000000000000000000000000000000000000000";
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [licenses, setLicenses] = useState([]);
+  const [licensees, setLicensees] = useState([]);
   const [isOwner, setIsOwner] = useState(false);
 
   const account = useAccount();
@@ -21,7 +22,10 @@ export default function Home() {
   const loadLicenses = async () => {
     setIsLoading(true);
     const licensesRes = await licensingContract.currentLicences();
+    const licenseesRes = await licensingContract.myLicenses();
+    console.log(licenseesRes[4].tokenId.toString())
     setLicenses(licensesRes);
+    setLicensees(licenseesRes.filter((_) => _.tokenId.toString() !== "0"));
     setIsLoading(false);
   }
 
@@ -38,10 +42,16 @@ export default function Home() {
     setIsOwner(String(owner).toLowerCase() === String(account));
   }
 
+  const buyLicense = async (tokenId, licenseIndex, amount) => {
+
+  }
+
   useEffect(() => {
     loadLicenses();
     checkOwner();
   }, [account]);
+
+  console.log(licensees)
 
   return (
     <div className="mx-auto max-w-7xl p-4">
@@ -55,8 +65,17 @@ export default function Home() {
               >
                 Add License
               </button>}
+              <h2 className="title-font mb-5 text-xl font-medium tracking-widest text-gray-900">
+                License Catalogue
+              </h2>
               <div className="grid grid-cols-12 gap-8">
-                {licenses.map((license) => <LicenseItem license={license} />)}
+                {licenses.map((license, index) => <LicenseItem license={license} isOwner={isOwner} buyLicense={() => buyLicense(0, index, 0)} />)}
+              </div>
+              {licensees.length && <h2 className="title-font mb-5 mt-5 text-xl font-medium tracking-widest text-gray-900">
+                My licenses
+              </h2>}
+              <div className="grid grid-cols-12 gap-8">
+                {licensees.map((licenseInfo) => <LicenseItem license={licenseInfo.licenseinfo} isOwner={isOwner} buyLicense={() => buyLicense(licenseInfo.tokenId, licenseInfo.licenseeInfo.licenseIndex, 0)} />)}
               </div>
             </>
           )}
@@ -77,7 +96,7 @@ Home.getLayout = function getLayout(page) {
   return (
     <Layout>
       <Head>
-        <title>Home | DappCamp Warriors</title>
+        <title>Home | Licensing Project</title>
       </Head>
       {page}
     </Layout>

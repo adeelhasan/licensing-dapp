@@ -1,6 +1,6 @@
 const moment = require("moment");
 
-export default function LicenseItem({ license }) {
+export default function LicenseItem({ license, isOwner, buyLicense }) {
     function hex2a(hexx) {
         var hex = hexx.toString();//force conversion
         var str = '';
@@ -40,22 +40,14 @@ export default function LicenseItem({ license }) {
                     >
                         {license.price.toString() + " Wei"}
                     </p>
-                    {/* {isOwner && !isStaked && (
+                    {!isOwner && (
                         <button
-                            onClick={stake}
+                            onClick={()=>buyLicense()}
                             className="flex rounded border-0 bg-indigo-500 py-2 px-8 text-lg text-white hover:bg-indigo-600 focus:outline-none disabled:opacity-50"
                         >
-                            STAKE
+                            BUY
                         </button>
                     )}
-                    {isOwner && isStaked && (
-                        <button
-                            onClick={unstake}
-                            className="flex rounded border-0 bg-indigo-500 py-2 px-8 text-lg text-white hover:bg-indigo-600 focus:outline-none disabled:opacity-50"
-                        >
-                            UNSTAKE
-                        </button>
-                    )} */}
                 </div>
             </div>
         </div>
