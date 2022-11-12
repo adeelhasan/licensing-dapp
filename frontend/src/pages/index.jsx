@@ -3,6 +3,7 @@ import Head from "next/head";
 
 import Layout from "components/Layout";
 import Spinner from "components/Spinner";
+import { ethers } from "ethers";
 
 import { useAccount, useContracts } from "contexts";
 import LicenseItem from "../components/License";
@@ -12,6 +13,7 @@ const zeroAddress = "0x0000000000000000000000000000000000000000";
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [licenses, setLicenses] = useState([]);
+  const [isOwner, setIsOwner] = useState(false);
 
   const account = useAccount();
   const { licensingContract } = useContracts();
@@ -25,14 +27,20 @@ export default function Home() {
 
   const addLicense = async () => {
     setIsLoading(true);
-    // await licensingContract.addLicense("Free 2", 1, 3600, 0);
+    await licensingContract.addLicense(ethers.utils.formatBytes32String("Free 2"), 1, 3600, 0);
     const licensesRes = await licensingContract.currentLicences();
     setLicenses(licensesRes);
     setIsLoading(false);
   }
 
+  const checkOwner = async () => {
+    const owner = await licensingContract.owner();
+    setIsOwner(String(owner).toLowerCase() === String(account));
+  }
+
   useEffect(() => {
     loadLicenses();
+    checkOwner();
   }, [account]);
 
   return (
@@ -41,12 +49,12 @@ export default function Home() {
         <div className="container mx-auto px-5 pt-12 pb-24">
           {!isLoading && (
             <>
-              <button
+              {isOwner && <button
                 onClick={addLicense}
                 className="flex rounded border-0 bg-indigo-500 mb-16 py-2 px-8 text-lg text-white hover:bg-indigo-600 focus:outline-none disabled:opacity-50"
               >
                 Add License
-              </button>
+              </button>}
               <div className="grid grid-cols-12 gap-8">
                 {licenses.map((license) => <LicenseItem license={license} />)}
               </div>

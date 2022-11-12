@@ -63,6 +63,7 @@ contract LicenseProjectScript is Script {
         vm.startBroadcast(pk_anvilAccount1);
 
         uint tokenId = licenseProject1.buyLicense(0,licenseId1, 0);
+        tokenId = licenseProject1.buyLicense{value: 1 ether}(0,licenseId2, 0);
         tokenId = licenseProject2.buyLicense{value: 5 ether}(0,licenseId5,0);
 
         paymentToken.approve(address(licenseProject3), 20);

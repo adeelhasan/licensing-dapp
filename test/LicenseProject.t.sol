@@ -262,5 +262,4 @@ contract LicenseProjectTest is Test {
         vm.prank(testAccount3);
         licenseProject.checkValidity(tokenToBeRented);
     }
-
 }
