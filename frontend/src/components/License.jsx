@@ -1,9 +1,12 @@
+const moment = require("moment");
+
 export default function LicenseItem({ license }) {
     function hex2a(hexx) {
         var hex = hexx.toString();//force conversion
         var str = '';
         for (var i = 0; i < hex.length; i += 2)
-            str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+            if (parseInt(hex.substr(i, 2), 16))
+                str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
         return str;
     }
     return (
@@ -23,7 +26,7 @@ export default function LicenseItem({ license }) {
                             wordBreak: "break-word",
                         }}
                     >
-                        {license.cycleLength.toString() + " seconds"}
+                        {moment.duration(license.cycleLength).humanize()}
                     </p>
                     <h2 className="title-font mb-1 text-xs font-medium tracking-widest text-gray-900">
                         Price
