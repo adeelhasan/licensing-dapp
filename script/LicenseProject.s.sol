@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
 import "src/LicenseProject.sol";
+import "src/LicensingOrganization.sol";
 import "openzeppelin-contracts/token/ERC20/ERC20.sol";
 
 contract PaymentToken is ERC20 {
@@ -47,6 +48,11 @@ contract LicenseProjectScript is Script {
 
         LicenseProject licenseProject3 = new LicenseProject("APEAPI","AAPI",address(paymentToken));
         uint licenseId6 = licenseProject3.addLicense("Short", 1, 1 minutes, 10);
+
+        LicensingOrganisation theCompany = new LicensingOrganisation("The Sky Store");
+        theCompany.addProject(licenseProject1);
+        theCompany.addProject(licenseProject2);
+        theCompany.addProject(licenseProject3);        
 
         paymentToken.transfer(testAccount1, 100);
         paymentToken.transfer(testAccount2, 100);

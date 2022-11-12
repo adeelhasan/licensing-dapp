@@ -29,4 +29,11 @@ library LicenseStructs {
         Licensee licenseeInfo;
         License licenseinfo;
     }
+
+    struct LicenseProjectStub {
+        address contractAddress;
+        string name;
+        string symbol;
+    }
+
 }
