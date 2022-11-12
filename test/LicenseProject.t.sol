@@ -248,4 +248,19 @@ contract LicenseProjectTest is Test {
         require(licensee2.cycles.length == res[1].licenseeInfo.cycles.length, "Licensee cycles don't match");
     }
 
+    function testRentingLicense() public {
+        uint newlicenseId = licenseProject.addLicense("Simple Monthly",3,1 hours,1 ether);
+        vm.deal(testAccount3, 10 ether);
+        vm.startPrank(testAccount3);
+        uint tokenToBeRented = licenseProject.buyLicense{value: 1 ether}(0,newlicenseId,0);
+        require(licenseProject.checkValidity(tokenToBeRented),"expected licensee not there");
+        licenseProject.rentLicenseTo(tokenToBeRented,testAccount2);
+        vm.stopPrank();
+        vm.prank(testAccount2);
+        require(licenseProject.checkValidity(tokenToBeRented),"renter not licensee");
+        vm.expectRevert("valid for user of record, not token owner");
+        vm.prank(testAccount3);
+        licenseProject.checkValidity(tokenToBeRented);
+    }
+
 }

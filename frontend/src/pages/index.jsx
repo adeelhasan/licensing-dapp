@@ -1,86 +1,56 @@
 import React, { useEffect, useState } from "react";
 import Head from "next/head";
 
-import NFT from "components/NFT";
 import Layout from "components/Layout";
 import Spinner from "components/Spinner";
 
 import { useAccount, useContracts } from "contexts";
+import LicenseItem from "../components/License";
 
 const zeroAddress = "0x0000000000000000000000000000000000000000";
-const fallbackImage = "http:///i.imgur.com/hfM1J8s.png";
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
-  const [nfts, setNfts] = useState([]);
+  const [licenses, setLicenses] = useState([]);
 
   const account = useAccount();
-  // const { dcWarriorsContract, stakingContract } = useContracts();
+  const { licensingContract } = useContracts();
 
-  const fetchNftDetails = async (nftURL) => {
-    try {
-      const response = await (await fetch(nftURL)).json();
-      const { image } = response;
-      return { image };
-    } catch (e) {
-      return { image: fallbackImage };
-    }
-  };
-
-  const loadNfts = async () => {
+  const loadLicenses = async () => {
     setIsLoading(true);
-    const baseUri = await dcWarriorsContract.baseURI();
-
-    let nfts = [];
-    for (let i = 0; i < 1000; i++) {
-      try {
-        const tokenId = i;
-        const owner = await dcWarriorsContract.ownerOf(tokenId);
-        const staked = await stakingContract.staked(tokenId);
-        const isStaked = staked.owner !== zeroAddress;
-
-        const nftURL = `${baseUri}/${tokenId}.json`;
-        const { image } = await fetchNftDetails(nftURL);
-
-        const nft = {
-          imageUrl: image,
-          tokenId,
-          owner: isStaked ? staked.owner : owner,
-          isStaked,
-        };
-        nfts.push(nft);
-      } catch (e) {
-        break;
-      }
-    }
-
-    setNfts(nfts);
+    const licensesRes = await licensingContract.currentLicences();
+    setLicenses(licensesRes);
     setIsLoading(false);
-  };
+  }
 
-  // useEffect(() => {
-  //   loadNfts();
-  // }, [account]);
+  const addLicense = async () => {
+    setIsLoading(true);
+    // await licensingContract.addLicense("Free 2", 1, 3600, 0);
+    const licensesRes = await licensingContract.currentLicences();
+    setLicenses(licensesRes);
+    setIsLoading(false);
+  }
+
+  useEffect(() => {
+    loadLicenses();
+  }, [account]);
 
   return (
     <div className="mx-auto max-w-7xl p-4">
       <section className="body-font text-gray-600">
         <div className="container mx-auto px-5 pt-12 pb-24">
           {!isLoading && (
-            <div className="grid grid-cols-12 gap-8">
-              {nfts.map((nft) => {
-                return (
-                  <NFT
-                    key={nft.tokenId}
-                    imageUrl={nft.imageUrl}
-                    tokenId={nft.tokenId}
-                    owner={nft.owner}
-                    isStaked={nft.isStaked}
-                    setNfts={setNfts}
-                  />
-                );
-              })}
-            </div>
+            <>
+              <button
+                onClick={addLicense}
+                className="flex rounded border-0 bg-indigo-500 mb-16 py-2 px-8 text-lg text-white hover:bg-indigo-600 focus:outline-none disabled:opacity-50"
+              >
+                Add License
+              </button>
+              <div className="grid grid-cols-12 gap-8">
+                {licenses.map((license) => <LicenseItem license={license} />)}
+              </div>
+            </>
           )}
           {isLoading && (
             <div className="w-full text-center">
