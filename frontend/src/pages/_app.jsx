@@ -6,23 +6,16 @@ import "react-toastify/dist/ReactToastify.css";
 
 import { AccountContext, ContractsContext } from "contexts.js";
 import {
-  networkName,
   getEthereumObject,
   setupEthereumEventListeners,
   getSignedContract,
   getCurrentAccount,
 } from "utils/common";
 
-import campContractMetadata from "data/abis/Camp.metadata.json";
-import warriorsContractMetadata from "data/abis/DappCampWarriors.metadata.json";
-import stakingContractMetdata from "data/abis/Staking.metadata.json";
 import licenseProjectMetadata from "data/abis/LicenseProject.metadata.json";
 
 import "../styles/globals.css";
 
-// const campContractAddr = process.env.NEXT_PUBLIC_CAMP_ADDRESS;
-// const dappCampWarriorsContractAddr = process.env.NEXT_PUBLIC_WARRIORS_ADDRESS;
-const stakingContractAddr = process.env.NEXT_PUBLIC_STAKING_ADDRESS;
 const licensingContractAddr = process.env.NEXT_PUBLIC_LICENSE_PROJECT;
 
 function MyApp({ Component, pageProps }) {
@@ -30,11 +23,9 @@ function MyApp({ Component, pageProps }) {
 
   const [account, setAccount] = useState(null);
   const [contracts, setContracts] = useState({
-    // campContract: null,
-    // dcWarriorsContract: null,
-    // stakingContract: null,
     licensingContract: null,
   });
+  let contractName = "";
 
   const load = async () => {
     const ethereum = getEthereumObject();
@@ -42,18 +33,6 @@ function MyApp({ Component, pageProps }) {
 
     setupEthereumEventListeners(ethereum);
 
-    // const campContract = getSignedContract(
-    //   campContractAddr,
-    //   campContractMetadata.output.abi
-    // );
-    // const dcWarriorsContract = getSignedContract(
-    //   dappCampWarriorsContractAddr,
-    //   warriorsContractMetadata.output.abi
-    // );
-    // const stakingContract = getSignedContract(
-    //   stakingContractAddr,
-    //   stakingContractMetdata.output.abi
-    // );
     const licensingContract = getSignedContract(
       licensingContractAddr,
       licenseProjectMetadata.output.abi
@@ -62,10 +41,19 @@ function MyApp({ Component, pageProps }) {
     if (!licensingContract) return;
 
     const currentAccount = await getCurrentAccount();
-    // setContracts({ campContract, dcWarriorsContract, stakingContract });
     setContracts({ licensingContract });
     setAccount(currentAccount);
   };
+
+  const setContractName = async () => {
+    contractName = await contracts.licensingContract.name();
+  }
+
+  useEffect(() => {
+    if (contracts.licensingContract && account) {
+      setContractName();
+    }
+  }, [contracts, account]);
 
   useEffect(() => {
     load();
@@ -74,7 +62,7 @@ function MyApp({ Component, pageProps }) {
   return (
     <>
       <Head>
-        <title>Word Star Licensing</title>
+        <title>License Project</title>
         <meta name="viewport" content="initial-scale=1.0, width=device-width" />
       </Head>
       <AccountContext.Provider value={account}>
