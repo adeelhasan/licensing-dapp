@@ -263,4 +263,12 @@ contract LicenseProjectTest is Test {
         licenseProject.checkValidity(tokenToBeRented);
     }
 
+    function testCheckOwnerFunction() public {
+        licenseProject.checkOwner();
+    }
+
+    function testFailCheckOwnerFunction() public {
+        vm.prank(testAccount3);
+        licenseProject.checkOwner();
+    }
 }

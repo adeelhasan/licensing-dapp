@@ -34,6 +34,10 @@ contract LicenseProject is ERC721, Ownable {
         paymentToken = token_;
     }
 
+    function checkOwner() external onlyOwner returns (bool) {
+        return true;
+    }
+
     function checkValidity(uint tokenId) public returns(bool) {
         require(this.ownerOf(tokenId) != address(0),"token id has not been minted");
 

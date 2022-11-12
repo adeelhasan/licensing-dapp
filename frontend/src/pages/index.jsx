@@ -3,6 +3,7 @@ import Head from "next/head";
 
 import Layout from "components/Layout";
 import Spinner from "components/Spinner";
+import { ethers } from "ethers";
 
 import { useAccount, useContracts } from "contexts";
 import LicenseItem from "../components/License";
@@ -25,7 +26,7 @@ export default function Home() {
 
   const addLicense = async () => {
     setIsLoading(true);
-    // await licensingContract.addLicense("Free 2", 1, 3600, 0);
+    await licensingContract.addLicense(ethers.utils.formatBytes32String("Free 2"), 1, 3600, 0);
     const licensesRes = await licensingContract.currentLicences();
     setLicenses(licensesRes);
     setIsLoading(false);
