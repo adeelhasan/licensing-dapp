@@ -12,6 +12,7 @@ In the future:
 - make it easier to manage a batch of licenses
 - have the NFTs be on OpenSea
 - identify projects that could make use of these contracts, maybe valist.io
+- analytics with the Graph
 
 ## Installation
 
