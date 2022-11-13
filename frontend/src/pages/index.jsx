@@ -9,6 +9,7 @@ import { useAccount, useContracts } from "contexts";
 import LicenseItem from "../components/License";
 
 const zeroAddress = "0x0000000000000000000000000000000000000000";
+const EthInWei = 1000000000000000000;
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
@@ -23,7 +24,6 @@ export default function Home() {
     setIsLoading(true);
     const licensesRes = await licensingContract.currentLicences();
     const licenseesRes = await licensingContract.myLicenses();
-    //console.log(licenseesRes[4].tokenId.toString())
     setLicenses(licensesRes);
     setLicensees(licenseesRes.filter((_) => _.tokenId.toString() !== "0"));
     setIsLoading(false);
@@ -42,8 +42,12 @@ export default function Home() {
     setIsOwner(String(owner).toLowerCase() === String(account));
   }
 
-  const buyLicense = async (tokenId, licenseIndex, amount) => {
-
+  const buyLicense = async (tokenId, licenseIndex, license) => {
+    const token = licensingContract.buyLicense(tokenId, licenseIndex, 0, {value: ethers.utils.parseEther(String(license.price/EthInWei))});
+    if (token) {
+      const licenseesRes = await licensingContract.myLicenses();
+      setLicensees(licenseesRes.filter((_) => _.tokenId.toString() !== "0"));
+    }
   }
 
   useEffect(() => {
@@ -51,11 +55,12 @@ export default function Home() {
     checkOwner();
   }, [account]);
 
+
   const getExpiration = (cycles) => {
     return cycles[cycles.length-1].endTime;
   }
-
-  console.log(licenses);
+  
+  console.log(licensees)
 
   return (
     <div className="mx-auto max-w-7xl p-4">
@@ -73,13 +78,13 @@ export default function Home() {
                 License Catalogue
               </h2>
               <div className="grid grid-cols-12 gap-8">
-                {licenses.map((license, index) => <LicenseItem license={license} isOwner={isOwner} buyLicense={() => buyLicense(0, index, 0)} />)}
+                {licenses.map((license, index) => <LicenseItem license={license} isOwner={isOwner} buyLicense={() => buyLicense(0, index, license)} />)}
               </div>
-              {licensees.length && <h2 className="title-font mb-5 mt-5 text-xl font-medium tracking-widest text-gray-900">
+              {Boolean(licensees.length) && <h2 className="title-font mb-5 mt-5 text-xl font-medium tracking-widest text-gray-900">
                 My licenses
               </h2>}
               <div className="grid grid-cols-12 gap-8">
-                {licensees.map((licenseInfo) => <LicenseItem license={licenseInfo.licenseinfo} isOwner={isOwner} tokenId={licenseInfo.tokenId} expiration={getExpiration(licenseInfo.licenseeInfo.cycles)} buyLicense={() => buyLicense(licenseInfo.tokenId, licenseInfo.licenseeInfo.licenseIndex, 0)} />)}
+                {licensees.map((licenseInfo) => <LicenseItem license={licenseInfo.licenseinfo} isOwner={isOwner} buyLicense={() => buyLicense(licenseInfo.tokenId, licenseInfo.licenseeInfo.licenseIndex, licenseInfo.licenseinfo)} />)}
               </div>
             </>
           )}
