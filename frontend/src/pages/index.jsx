@@ -15,9 +15,22 @@ export default function Home() {
   const [licenses, setLicenses] = useState([]);
   const [licensees, setLicensees] = useState([]);
   const [isOwner, setIsOwner] = useState(false);
+  const [showAddLic, setShowAddLic] = useState(false);
 
   const account = useAccount();
   const { licensingContract } = useContracts();
+  const [contractName, setContractName] = useState("");
+
+  useEffect(() => {
+    if (licensingContract && account) {
+      getContractName();
+    }
+  }, [licensingContract, account]);
+
+  const getContractName = async () => {
+    const contractNameRes = await licensingContract.name();
+    setContractName(contractNameRes);
+  }
 
   const loadLicenses = async () => {
     setIsLoading(true);
@@ -39,6 +52,7 @@ export default function Home() {
     await txnHash.wait();
     const licensesRes = await licensingContract.currentLicences();
     setLicenses(licensesRes);
+    setShowAddLic(false);
     setIsLoading(false);
   }
 
@@ -72,7 +86,16 @@ export default function Home() {
         <div className="container mx-auto px-5 pt-12 pb-24">
           {!isLoading && (
             <>
-              {isOwner && <form onSubmit={addLicense} className="grid">
+            {
+              isOwner && 
+              <button
+                onClick={()=>setShowAddLic(!showAddLic)}
+                className="flex rounded border-0 bg-green-500 mb-8 py-2 px-8 text-lg text-white hover:bg-indigo-600 focus:outline-none disabled:opacity-50"
+              >
+                {showAddLic ? "Hide" : "Add License"}
+              </button>
+            }
+              {isOwner && showAddLic && <form onSubmit={addLicense} className="grid">
                 <div>
                   <label htmlFor="name">Name</label>
                   <input
@@ -118,12 +141,12 @@ export default function Home() {
                     type="submit"
                     className="flex rounded border-0 bg-indigo-500 mb-16 py-2 px-8 text-lg text-white hover:bg-indigo-600 focus:outline-none disabled:opacity-50"
                   >
-                    Add License
+                    Submit
                   </button>
                 </div>
               </form>}
               <h2 className="title-font mb-5 text-xl font-medium tracking-widest text-gray-900">
-                License Catalogue
+                {contractName} Catalogue
               </h2>
               <div className="grid grid-cols-12 gap-8">
                 {licenses.map((license, index) => <LicenseItem
