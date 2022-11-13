@@ -29,9 +29,14 @@ export default function Home() {
     setIsLoading(false);
   }
 
-  const addLicense = async () => {
+  const addLicense = async (event) => {
+    event.preventDefault();
+    const name = event.target.name.value;
+    const maxCycles = event.target.maxCycles.value;
+    const cycleLength = event.target.cycleLength.value;
+    const price = event.target.price.value;
     setIsLoading(true);
-    await licensingContract.addLicense(ethers.utils.formatBytes32String("Free 2"), 1, 3600, 0);
+    const txnHash = await licensingContract.addLicense(ethers.utils.formatBytes32String(name), maxCycles, cycleLength, price);
     const licensesRes = await licensingContract.currentLicences();
     setLicenses(licensesRes);
     setIsLoading(false);
@@ -43,7 +48,7 @@ export default function Home() {
   }
 
   const buyLicense = async (tokenId, licenseIndex, license) => {
-    const token = licensingContract.buyLicense(tokenId, licenseIndex, 0, {value: ethers.utils.parseEther(String(license.price/EthInWei))});
+    const token = licensingContract.buyLicense(tokenId, licenseIndex, 0, { value: ethers.utils.parseEther(String(license.price / EthInWei)) });
     if (token) {
       const licenseesRes = await licensingContract.myLicenses();
       setLicensees(licenseesRes.filter((_) => _.tokenId.toString() !== "0"));
@@ -57,10 +62,8 @@ export default function Home() {
 
 
   const getExpiration = (cycles) => {
-    return cycles[cycles.length-1].endTime;
+    return cycles[cycles.length - 1].endTime;
   }
-  
-  console.log(licensees)
 
   return (
     <div className="mx-auto max-w-7xl p-4">
@@ -68,23 +71,80 @@ export default function Home() {
         <div className="container mx-auto px-5 pt-12 pb-24">
           {!isLoading && (
             <>
-              {isOwner && <button
-                onClick={addLicense}
-                className="flex rounded border-0 bg-indigo-500 mb-16 py-2 px-8 text-lg text-white hover:bg-indigo-600 focus:outline-none disabled:opacity-50"
-              >
-                Add License
-              </button>}
+              {isOwner && <form onSubmit={addLicense} className="grid">
+                <div>
+                  <label htmlFor="name">Name</label>
+                  <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    className="mb-4 ml-2 border-2"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="maxCycles">Max Cycles</label>
+                  <input
+                    type="number"
+                    id="maxCycles"
+                    name="maxCycles"
+                    className="mb-4 ml-2 border-2"
+                    required
+                  /></div>
+                <div>
+                  <label htmlFor="cycleLength">Cycle Length (seconds)</label>
+                  <input
+                    type="number"
+                    id="cycleLength"
+                    name="cycleLength"
+                    className="mb-4 ml-2 border-2"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="price">Price (ethers)</label>
+                  <input
+                    type="number"
+                    id="price"
+                    name="price"
+                    // step={0.0001}
+                    className="mb-4 ml-2 border-2"
+                    required
+                  />
+                </div>
+                <div>
+                  <button
+                    type="submit"
+                    className="flex rounded border-0 bg-indigo-500 mb-16 py-2 px-8 text-lg text-white hover:bg-indigo-600 focus:outline-none disabled:opacity-50"
+                  >
+                    Add License
+                  </button>
+                </div>
+              </form>}
               <h2 className="title-font mb-5 text-xl font-medium tracking-widest text-gray-900">
                 License Catalogue
               </h2>
               <div className="grid grid-cols-12 gap-8">
-                {licenses.map((license, index) => <LicenseItem license={license} isOwner={isOwner} buyLicense={() => buyLicense(0, index, license)} />)}
+                {licenses.map((license, index) => <LicenseItem 
+                  license={license} 
+                  isOwner={isOwner} 
+                  buyLicense={() => buyLicense(0, index, license)} 
+                  key={index}
+                  />
+                )}
               </div>
               {Boolean(licensees.length) && <h2 className="title-font mb-5 mt-5 text-xl font-medium tracking-widest text-gray-900">
                 My licenses
               </h2>}
               <div className="grid grid-cols-12 gap-8">
-                {licensees.map((licenseInfo) => <LicenseItem license={licenseInfo.licenseinfo} expiration={getExpiration(licenseInfo.licenseeInfo.cycles)} tokenId={licenseInfo.tokenId} isOwner={isOwner} buyLicense={() => buyLicense(licenseInfo.tokenId, licenseInfo.licenseeInfo.licenseIndex, licenseInfo.licenseinfo)} />)}
+                {licensees.map((licenseInfo, index) => <LicenseItem 
+                  license={licenseInfo.licenseinfo} 
+                  expiration={getExpiration(licenseInfo.licenseeInfo.cycles)} 
+                  tokenId={licenseInfo.tokenId} 
+                  isOwner={isOwner} 
+                  buyLicense={() => buyLicense(licenseInfo.tokenId, licenseInfo.licenseeInfo.licenseIndex, licenseInfo.licenseinfo)} 
+                  key={index}/>
+                )}
               </div>
             </>
           )}
