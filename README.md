@@ -11,6 +11,7 @@ In the future:
 - demonstrate use on mainnet, eg, to restrict access to a Flashloan script
 - make it easier to manage a batch of licenses
 - have the NFTs be on OpenSea
+- identify projects that could make use of these contracts, maybe valist.io
 
 ## Installation
 
