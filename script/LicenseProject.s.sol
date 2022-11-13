@@ -36,13 +36,13 @@ contract LicenseProjectScript is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         LicenseProject licenseProject1 = new LicenseProject("WordStar","WRDS",address(0));
-        uint licenseId1 = licenseProject1.addLicense("Free", 1, 7 days, 0);
-        uint licenseId2 = licenseProject1.addLicense("Basic", 12, 30 days, 1 ether);
-        uint licenseId3 = licenseProject1.addLicense("Pro", 12, 30 days, 5 ether);
+        uint licenseId1 = licenseProject1.addLicense("Gratis", 1, 0, 0);
+        uint licenseId2 = licenseProject1.addLicense("One Step", 12, 7 days, 1 ether);
+        uint licenseId3 = licenseProject1.addLicense("Max", 12, 30 days, 5 ether);
 
         LicenseProject licenseProject2 = new LicenseProject("BitFlix","BLX",address(0));
-        uint licenseId4 = licenseProject2.addLicense("Free", 1, 0, 0);
-        uint licenseId5 = licenseProject2.addLicense("Pro", 1, 365 days, 5 ether);
+        uint licenseId4 = licenseProject2.addLicense("Signup", 1, 0, 0);
+        uint licenseId5 = licenseProject2.addLicense("Professional", 1, 365 days, 5 ether);
 
         PaymentToken paymentToken = new PaymentToken("Silver","SLV",10000000);
 

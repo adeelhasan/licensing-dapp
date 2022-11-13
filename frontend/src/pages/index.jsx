@@ -23,7 +23,7 @@ export default function Home() {
     setIsLoading(true);
     const licensesRes = await licensingContract.currentLicences();
     const licenseesRes = await licensingContract.myLicenses();
-    console.log(licenseesRes[4].tokenId.toString())
+    //console.log(licenseesRes[4].tokenId.toString())
     setLicenses(licensesRes);
     setLicensees(licenseesRes.filter((_) => _.tokenId.toString() !== "0"));
     setIsLoading(false);
@@ -51,7 +51,11 @@ export default function Home() {
     checkOwner();
   }, [account]);
 
-  console.log(licensees)
+  const getExpiration = (cycles) => {
+    return cycles[cycles.length-1].endTime;
+  }
+
+  console.log(licenses);
 
   return (
     <div className="mx-auto max-w-7xl p-4">
@@ -75,7 +79,7 @@ export default function Home() {
                 My licenses
               </h2>}
               <div className="grid grid-cols-12 gap-8">
-                {licensees.map((licenseInfo) => <LicenseItem license={licenseInfo.licenseinfo} isOwner={isOwner} buyLicense={() => buyLicense(licenseInfo.tokenId, licenseInfo.licenseeInfo.licenseIndex, 0)} />)}
+                {licensees.map((licenseInfo) => <LicenseItem license={licenseInfo.licenseinfo} isOwner={isOwner} tokenId={licenseInfo.tokenId} expiration={getExpiration(licenseInfo.licenseeInfo.cycles)} buyLicense={() => buyLicense(licenseInfo.tokenId, licenseInfo.licenseeInfo.licenseIndex, 0)} />)}
               </div>
             </>
           )}
