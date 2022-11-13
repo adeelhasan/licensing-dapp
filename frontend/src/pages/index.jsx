@@ -36,7 +36,7 @@ export default function Home() {
     const cycleLength = event.target.cycleLength.value;
     const price = event.target.price.value;
     setIsLoading(true);
-    const txnHash = await licensingContract.addLicense(ethers.utils.formatBytes32String(name), maxCycles, cycleLength, price);
+    const txnHash = await licensingContract.addLicense(ethers.utils.formatBytes32String(name), maxCycles, cycleLength, ethers.utils.parseUnits(price.toString(), "ether"));
     await txnHash.wait();
     const licensesRes = await licensingContract.currentLicences();
     setLicenses(licensesRes);
