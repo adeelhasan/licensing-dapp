@@ -25,7 +25,6 @@ function MyApp({ Component, pageProps }) {
   const [contracts, setContracts] = useState({
     licensingContract: null,
   });
-  let contractName = "";
 
   const load = async () => {
     const ethereum = getEthereumObject();
@@ -44,16 +43,6 @@ function MyApp({ Component, pageProps }) {
     setContracts({ licensingContract });
     setAccount(currentAccount);
   };
-
-  const setContractName = async () => {
-    contractName = await contracts.licensingContract.name();
-  }
-
-  useEffect(() => {
-    if (contracts.licensingContract && account) {
-      setContractName();
-    }
-  }, [contracts, account]);
 
   useEffect(() => {
     load();

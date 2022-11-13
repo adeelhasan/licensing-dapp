@@ -8,7 +8,6 @@ import { ethers } from "ethers";
 import { useAccount, useContracts } from "contexts";
 import LicenseItem from "../components/License";
 
-const zeroAddress = "0x0000000000000000000000000000000000000000";
 const EthInWei = 1000000000000000000;
 
 export default function Home() {
@@ -104,12 +103,12 @@ export default function Home() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="price">Price (wei)</label>
+                  <label htmlFor="price">Price (ethers)</label>
                   <input
                     type="number"
                     id="price"
                     name="price"
-                    // step={0.0001}
+                    step={0.00001}
                     className="mb-4 ml-2 border-2"
                     required
                   />

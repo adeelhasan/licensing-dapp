@@ -20,7 +20,7 @@ export default function LicenseItem({ license, isOwner, tokenId, expiration, buy
             if (priceInEth > 0.0001)
                 return priceInEth.toString() + " ETH"
             else
-                return priceInWei.toString() + "Wei"
+                return priceInWei.toString() + " Wei"
         }
     }
 
@@ -44,11 +44,9 @@ export default function LicenseItem({ license, isOwner, tokenId, expiration, buy
                 <div className="p-6">
                      {tokenId && (
                         <h2>Id: {tokenId.toString()}</h2>
-                        
                     )}
                      {tokenId && (
                         <h2>Expires: {formatExpiration(expiration)}</h2>
-                        
                     )}
                     <h1 className="title-font mb-3 text-lg font-medium text-gray-900">
                         {hex2a(license.name)}
@@ -80,9 +78,10 @@ export default function LicenseItem({ license, isOwner, tokenId, expiration, buy
                     {!isOwner && (
                         <button
                             onClick={()=>buyLicense()}
+                            disabled={expiration==0}
                             className="flex rounded border-0 bg-indigo-500 py-2 px-8 text-lg text-white hover:bg-indigo-600 focus:outline-none disabled:opacity-50"
                         >
-                            BUY
+                            { tokenId ? "RENEW": "BUY"}
                         </button>
                     )}
                 </div>
