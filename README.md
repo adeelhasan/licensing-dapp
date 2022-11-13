@@ -38,13 +38,9 @@ PK_ANVIL_3=""
 forge script script/LicenseProject.s.sol:LicenseProjectScript --rpc-url http://localhost:8545 --broadcast
 ```
 
-- import the private keys above into Metamask to make it easier to see the frontend
-
-- more on the readme
-- rentable
-- holding Account or LicensingCompany
-- some comments
-- starting from a time offset? not done as yet
-
 ## Front End notes
 
+```
+cd frontend
+npm run dev
+```
