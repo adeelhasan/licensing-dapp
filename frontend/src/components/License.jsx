@@ -13,28 +13,29 @@ export default function LicenseItem({ license, isOwner, tokenId, expiration, buy
     }
 
     function formatPrice(priceInWei) {
-        var result = "";
         if (priceInWei == 0)
-            result = "Free"
+            return "Free"
         else {
             var priceInEth = ethers.utils.formatEther(priceInWei)
             if (priceInEth > 0.0001)
-                result = priceInEth.toString() + " ETH"
+                return priceInEth.toString() + " ETH"
             else
-                result = priceInWei.toString() + "Wei"
+                return priceInWei.toString() + "Wei"
         }
-        
-        return result;
     }
 
     function formatExpiration(expiration) {
-        var result = "";
-        if (expiration == 0)
-            result = "Never"
-        else {
-            result = moment.unix(expiration).fromNow();
-        }
-        return result;
+        if (expiration == 0) 
+            return "Never";
+        else
+            return moment.unix(expiration).fromNow();
+    }
+
+    function formatCycleLength(cycleLength) {
+        if (cycleLength == 0) 
+            return "Perpetual";
+        else
+            return moment.duration(license.cycleLength.mul(1000).toString()).humanize();
     }
 
     return (
@@ -42,7 +43,7 @@ export default function LicenseItem({ license, isOwner, tokenId, expiration, buy
             <div className="h-full overflow-hidden rounded-lg border-2 border-gray-200 border-opacity-60">
                 <div className="p-6">
                      {tokenId && (
-                        <h2>{tokenId.toString()}</h2>
+                        <h2>Id: {tokenId.toString()}</h2>
                         
                     )}
                      {tokenId && (
@@ -62,7 +63,7 @@ export default function LicenseItem({ license, isOwner, tokenId, expiration, buy
                             wordBreak: "break-word",
                         }}
                     >
-                        {moment.duration(license.cycleLength.mul(1000).toString()).humanize()}
+                        {formatCycleLength(license.cycleLength)}
                     </p>                    
                     <h2 className="title-font mb-1 text-xs font-medium tracking-widest text-gray-900">
                         Price

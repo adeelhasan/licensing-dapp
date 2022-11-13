@@ -84,7 +84,7 @@ export default function Home() {
                 My licenses
               </h2>}
               <div className="grid grid-cols-12 gap-8">
-                {licensees.map((licenseInfo) => <LicenseItem license={licenseInfo.licenseinfo} isOwner={isOwner} buyLicense={() => buyLicense(licenseInfo.tokenId, licenseInfo.licenseeInfo.licenseIndex, licenseInfo.licenseinfo)} />)}
+                {licensees.map((licenseInfo) => <LicenseItem license={licenseInfo.licenseinfo} expiration={getExpiration(licenseInfo.licenseeInfo.cycles)} tokenId={licenseInfo.tokenId} isOwner={isOwner} buyLicense={() => buyLicense(licenseInfo.tokenId, licenseInfo.licenseeInfo.licenseIndex, licenseInfo.licenseinfo)} />)}
               </div>
             </>
           )}
