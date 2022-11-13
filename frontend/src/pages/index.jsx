@@ -37,6 +37,7 @@ export default function Home() {
     const price = event.target.price.value;
     setIsLoading(true);
     const txnHash = await licensingContract.addLicense(ethers.utils.formatBytes32String(name), maxCycles, cycleLength, price);
+    await txnHash.wait();
     const licensesRes = await licensingContract.currentLicences();
     setLicenses(licensesRes);
     setIsLoading(false);
@@ -48,11 +49,12 @@ export default function Home() {
   }
 
   const buyLicense = async (tokenId, licenseIndex, license) => {
-    const token = licensingContract.buyLicense(tokenId, licenseIndex, 0, { value: ethers.utils.parseEther(String(license.price / EthInWei)) });
-    if (token) {
-      const licenseesRes = await licensingContract.myLicenses();
-      setLicensees(licenseesRes.filter((_) => _.tokenId.toString() !== "0"));
-    }
+    setIsLoading(true);
+    const txnHash = await licensingContract.buyLicense(tokenId, licenseIndex, 0, { value: ethers.utils.parseEther(String(license.price / EthInWei)) });
+    await txnHash.wait();
+    const licenseesRes = await licensingContract.myLicenses();
+    setLicensees(licenseesRes.filter((_) => _.tokenId.toString() !== "0"));
+    setIsLoading(false);
   }
 
   useEffect(() => {
@@ -102,7 +104,7 @@ export default function Home() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="price">Price (ethers)</label>
+                  <label htmlFor="price">Price (wei)</label>
                   <input
                     type="number"
                     id="price"
@@ -125,25 +127,25 @@ export default function Home() {
                 License Catalogue
               </h2>
               <div className="grid grid-cols-12 gap-8">
-                {licenses.map((license, index) => <LicenseItem 
-                  license={license} 
-                  isOwner={isOwner} 
-                  buyLicense={() => buyLicense(0, index, license)} 
+                {licenses.map((license, index) => <LicenseItem
+                  license={license}
+                  isOwner={isOwner}
+                  buyLicense={() => buyLicense(0, index, license)}
                   key={index}
-                  />
+                />
                 )}
               </div>
               {Boolean(licensees.length) && <h2 className="title-font mb-5 mt-5 text-xl font-medium tracking-widest text-gray-900">
                 My licenses
               </h2>}
               <div className="grid grid-cols-12 gap-8">
-                {licensees.map((licenseInfo, index) => <LicenseItem 
-                  license={licenseInfo.licenseinfo} 
-                  expiration={getExpiration(licenseInfo.licenseeInfo.cycles)} 
-                  tokenId={licenseInfo.tokenId} 
-                  isOwner={isOwner} 
-                  buyLicense={() => buyLicense(licenseInfo.tokenId, licenseInfo.licenseeInfo.licenseIndex, licenseInfo.licenseinfo)} 
-                  key={index}/>
+                {licensees.map((licenseInfo, index) => <LicenseItem
+                  license={licenseInfo.licenseinfo}
+                  expiration={getExpiration(licenseInfo.licenseeInfo.cycles)}
+                  tokenId={licenseInfo.tokenId}
+                  isOwner={isOwner}
+                  buyLicense={() => buyLicense(licenseInfo.tokenId, licenseInfo.licenseeInfo.licenseIndex, licenseInfo.licenseinfo)}
+                  key={index} />
                 )}
               </div>
             </>
