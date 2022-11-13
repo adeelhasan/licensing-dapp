@@ -145,20 +145,8 @@ export default function Home() {
                   </button>
                 </div>
               </form>}
-              <h2 className="title-font mb-5 text-xl font-medium tracking-widest text-gray-900">
-                {contractName} Catalogue
-              </h2>
-              <div className="grid grid-cols-12 gap-8">
-                {licenses.map((license, index) => <LicenseItem
-                  license={license}
-                  isOwner={isOwner}
-                  buyLicense={() => buyLicense(0, index, license)}
-                  key={index}
-                />
-                )}
-              </div>
-              {Boolean(licensees.length) && <h2 className="title-font mb-5 mt-5 text-xl font-medium tracking-widest text-gray-900">
-                My licenses
+              {Boolean(licensees.length) && <h2 className="title-font mb-5 text-xl font-medium tracking-widest text-gray-900">
+                My Licenses
               </h2>}
               <div className="grid grid-cols-12 gap-8">
                 {licensees.map((licenseInfo, index) => <LicenseItem
@@ -168,6 +156,18 @@ export default function Home() {
                   isOwner={isOwner}
                   buyLicense={() => buyLicense(licenseInfo.tokenId, licenseInfo.licenseeInfo.licenseIndex, licenseInfo.licenseinfo)}
                   key={index} />
+                )}
+              </div>
+              <h2 className="title-font mb-5 mt-10 text-xl font-medium tracking-widest text-gray-900">
+                {contractName} Catalogue
+              </h2>
+              <div className="grid grid-cols-12 gap-8">
+                {licenses.map((license, index) => <LicenseItem
+                  license={license}
+                  isOwner={isOwner}
+                  buyLicense={() => buyLicense(0, index, license)}
+                  key={index}
+                />
                 )}
               </div>
             </>
