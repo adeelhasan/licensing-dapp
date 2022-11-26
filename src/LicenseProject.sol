@@ -5,12 +5,12 @@ pragma solidity ^0.8.13;
 import "openzeppelin-contracts/utils/Counters.sol";
 import "openzeppelin-contracts/access/Ownable.sol";
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
-import "openzeppelin-contracts/token/ERC721/ERC721.sol";
+import "openzeppelin-contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "forge-std/Test.sol";
 import "./LicenseStructs.sol";
 
-//one software product would have one project
-contract LicenseProject is ERC721, Ownable {
+
+contract LicenseProject is ERC721Enumerable, Ownable {
 
     using Counters for Counters.Counter;
 
@@ -152,22 +152,16 @@ contract LicenseProject is ERC721, Ownable {
         return allLicenses;
     }
     
-    function myLicenses() external view returns(LicenseStructs.LicenseInfo[100] memory) {
-        //Added a static length of 100 to the array as push function was not 
-        //supported for array stored in memory and storage variables cannot be returned.
-        LicenseStructs.LicenseInfo[100] memory myLicensesArr;
-        uint j = 0;
-        for (uint i=1; i<=_tokenIds.current(); i++){
-            if(licensees[i].user == msg.sender){
-                myLicensesArr[j] = LicenseStructs.LicenseInfo(i,licensees[i], _licenses[licensees[i].licenseIndex]);
-                j++;
-                if(j == 99){
-                    break;
-                }
-            }
+    function myLicenses() external view returns(LicenseStructs.LicenseInfo[] memory) {
+        uint count = balanceOf(msg.sender);
+        LicenseStructs.LicenseInfo[] memory result = new LicenseStructs.LicenseInfo[](count);
+        for (uint i; i<count; i++) {
+            uint tokenId = tokenOfOwnerByIndex(msg.sender,i);
+            result[i] = LicenseStructs.LicenseInfo(tokenId,licensees[tokenId], _licenses[licensees[tokenId].licenseIndex]);
         }
-        return myLicensesArr;
+        return result;
     }
+
 
     function _afterTokenTransfer(
         address from,

@@ -728,6 +728,97 @@
       },
       {
         "inputs": [],
+        "name": "myLicenses2",
+        "outputs": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "tokenId",
+                "type": "uint256"
+              },
+              {
+                "components": [
+                  {
+                    "internalType": "uint256",
+                    "name": "licenseIndex",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "address",
+                    "name": "user",
+                    "type": "address"
+                  },
+                  {
+                    "components": [
+                      {
+                        "internalType": "enum LicenseStructs.CycleStatus",
+                        "name": "status",
+                        "type": "uint8"
+                      },
+                      {
+                        "internalType": "uint256",
+                        "name": "startTime",
+                        "type": "uint256"
+                      },
+                      {
+                        "internalType": "uint256",
+                        "name": "endTime",
+                        "type": "uint256"
+                      }
+                    ],
+                    "internalType": "struct LicenseStructs.Cycle[]",
+                    "name": "cycles",
+                    "type": "tuple[]"
+                  }
+                ],
+                "internalType": "struct LicenseStructs.Licensee",
+                "name": "licenseeInfo",
+                "type": "tuple"
+              },
+              {
+                "components": [
+                  {
+                    "internalType": "bytes32",
+                    "name": "name",
+                    "type": "bytes32"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "maxCycles",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "cycleLength",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "uint256",
+                    "name": "price",
+                    "type": "uint256"
+                  },
+                  {
+                    "internalType": "bool",
+                    "name": "active",
+                    "type": "bool"
+                  }
+                ],
+                "internalType": "struct LicenseStructs.License",
+                "name": "licenseinfo",
+                "type": "tuple"
+              }
+            ],
+            "internalType": "struct LicenseStructs.LicenseInfo[]",
+            "name": "",
+            "type": "tuple[]"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
         "name": "name",
         "outputs": [
           {
@@ -914,6 +1005,49 @@
         "inputs": [
           {
             "internalType": "uint256",
+            "name": "index",
+            "type": "uint256"
+          }
+        ],
+        "name": "tokenByIndex",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "address",
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "index",
+            "type": "uint256"
+          }
+        ],
+        "name": "tokenOfOwnerByIndex",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {
+            "internalType": "uint256",
             "name": "tokenId",
             "type": "uint256"
           }
@@ -924,6 +1058,19 @@
             "internalType": "string",
             "name": "",
             "type": "string"
+          }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [],
+        "name": "totalSupply",
+        "outputs": [
+          {
+            "internalType": "uint256",
+            "name": "",
+            "type": "uint256"
           }
         ],
         "stateMutability": "view",
