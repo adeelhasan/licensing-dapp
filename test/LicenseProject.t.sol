@@ -221,7 +221,7 @@ contract LicenseProjectTest is Test {
         vm.startPrank(testAccount2);
         uint tokenId1 = licenseProject.buyLicense{value: 1 ether}(0,licenseId1,0);
         uint tokenId2 = licenseProject.buyLicense{value: 1 ether}(0,licenseId3,0);
-        LicenseStructs.LicenseInfo[100] memory res = licenseProject.myLicenses();
+        LicenseStructs.LicenseInfo[] memory res = licenseProject.myLicenses();
         require(res[0].tokenId == tokenId1, "Token Id don't match");
         require(res[1].tokenId == tokenId2, "Token Id don't match");
         LicenseStructs.License memory license1 = licenseProject.getLicenseData(licenseId1);
