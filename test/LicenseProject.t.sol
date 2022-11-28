@@ -107,11 +107,11 @@ contract LicenseProjectTest is Test {
         vm.startPrank(testAccount3);
         paymentToken.approve(address(licenseProjectTakingTokens), 1000);
         uint tokenId = licenseProjectTakingTokens.buyLicense(0, licenseId2, 200);
-        uint initialEndDate = licenseProjectTakingTokens.getLicenseeData(tokenId).cycles[0].endTime;
+        uint initialEndDate = licenseProjectTakingTokens.getLicenseeData(tokenId).endTime;
         vm.warp(block.timestamp + 100);
         tokenId = licenseProjectTakingTokens.buyLicense(tokenId, licenseId2, 200);
         vm.stopPrank();
-        uint newEndDate = licenseProjectTakingTokens.getLicenseeData(tokenId).cycles[0].endTime;
+        uint newEndDate = licenseProjectTakingTokens.getLicenseeData(tokenId).endTime;
         assert(initialEndDate + 3600 == newEndDate);
     }
 
@@ -170,7 +170,7 @@ contract LicenseProjectTest is Test {
         require(tokenId>0,"tokenId not valid");
         require(licenseProjectTakingTokens.checkValidity(tokenId) == true,"validity check failed");
         vm.warp(4000);
-        require(licenseProjectTakingTokens.checkValidity(tokenId),"token still valid");
+        require(licenseProjectTakingTokens.checkValidityWithAutoRenewal(tokenId),"token still valid");
         vm.stopPrank();
     }
 
@@ -185,9 +185,10 @@ contract LicenseProjectTest is Test {
         vm.stopPrank();
         vm.prank(testAccount2);
         require(licenseProject.checkValidity(tokenId),"license was not transfered with the token");
-        vm.expectRevert("valid for user of record, not token owner");
-        vm.prank(testAccount);
+        vm.startPrank(testAccount);
+        vm.expectRevert("valid for user of record only");
         licenseProject.checkValidity(tokenId);
+        vm.stopPrank();
     }
 
     function testFailIfNotExactChangeGiven() public {
@@ -226,8 +227,8 @@ contract LicenseProjectTest is Test {
         require(res[1].tokenId == tokenId2, "Token Id don't match");
         LicenseStructs.License memory license1 = licenseProject.getLicenseData(licenseId1);
         LicenseStructs.License memory license3 = licenseProject.getLicenseData(licenseId3);
-        LicenseStructs.Licensee memory licensee1 = licenseProject.getLicenseeData(tokenId1);
-        LicenseStructs.Licensee memory licensee2 = licenseProject.getLicenseeData(tokenId2);
+        LicenseeStatus memory licensee1 = licenseProject.getLicenseeData(tokenId1);
+        LicenseeStatus memory licensee2 = licenseProject.getLicenseeData(tokenId2);
 
         require(license1.name == res[0].licenseinfo.name, "License Name don't match");
         require(license1.maxCycles == res[0].licenseinfo.maxCycles, "License maxCycles don't match");
@@ -240,12 +241,12 @@ contract LicenseProjectTest is Test {
         require(license3.price == res[1].licenseinfo.price, "License price don't match");
         require(license3.active == res[1].licenseinfo.active, "License active don't match");
 
-        require(licensee1.licenseIndex == res[0].licenseeInfo.licenseIndex, "Licensee licenseIndex don't match");
+        require(licensee1.licenseId == res[0].licenseeInfo.licenseId, "Licensee licenseIndex don't match");
         require(licensee1.user == res[0].licenseeInfo.user, "Licensee user don't match");
-        require(licensee1.cycles.length == res[0].licenseeInfo.cycles.length, "Licensee cycles don't match");
-        require(licensee2.licenseIndex == res[1].licenseeInfo.licenseIndex, "Licensee licenseIndex don't match");
+        require(licensee1.cyclesDone == res[0].licenseeInfo.cyclesDone, "Licensee cycles don't match");
+        require(licensee2.licenseId == res[1].licenseeInfo.licenseId, "Licensee licenseIndex don't match");
         require(licensee2.user == res[1].licenseeInfo.user, "Licensee user don't match");
-        require(licensee2.cycles.length == res[1].licenseeInfo.cycles.length, "Licensee cycles don't match");
+        require(licensee2.cyclesDone == res[1].licenseeInfo.cyclesDone, "Licensee cycles don't match");
     }
 
     function testRentingLicense() public {
@@ -258,8 +259,9 @@ contract LicenseProjectTest is Test {
         vm.stopPrank();
         vm.prank(testAccount2);
         require(licenseProject.checkValidity(tokenToBeRented),"renter not licensee");
-        vm.expectRevert("valid for user of record, not token owner");
-        vm.prank(testAccount3);
+        vm.startPrank(testAccount3);
+        vm.expectRevert("valid for user of record only");
         licenseProject.checkValidity(tokenToBeRented);
+        vm.stopPrank();
     }
 }

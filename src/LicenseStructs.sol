@@ -2,6 +2,17 @@
 
 pragma solidity ^0.8.13;
 
+
+
+struct LicenseeStatus {
+    address user;
+    uint licenseId;
+    uint cyclesDone;
+    uint startTime;
+    uint endTime;
+}
+
+
 library LicenseStructs {
     enum CycleStatus { Unpaid, Free, Paid }
     struct Cycle {
@@ -26,7 +37,7 @@ library LicenseStructs {
 
     struct LicenseInfo {
         uint tokenId;
-        Licensee licenseeInfo;
+        LicenseeStatus licenseeInfo;
         License licenseinfo;
     }
 

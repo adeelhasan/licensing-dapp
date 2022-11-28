@@ -28,34 +28,44 @@ contract LicenseProject is ERC721Enumerable, Ownable {
 
     LicenseStructs.License[] private _licenses;
     
-    mapping(uint => LicenseStructs.Licensee) public licensees;
+    //mapping(uint => LicenseStructs.Licensee) public licensees;
+    mapping(uint => LicenseeStatus) public licensees;
 
     constructor(string memory name, string memory symbol, address token_) ERC721(name,symbol) {
         paymentToken = token_;
     }
 
-    function checkValidity(uint tokenId) public returns(bool) {
+    function checkValidityWithAutoRenewal(uint tokenId) public returns(bool) {
         require(this.ownerOf(tokenId) != address(0),"token id has not been minted");
 
-        LicenseStructs.Licensee memory l = licensees[tokenId];
+        LicenseeStatus memory status = licensees[tokenId];
 
-        require(l.user == msg.sender,"valid for user of record, not token owner");
+        require(status.user == msg.sender,"valid for user of record only");
 
-        LicenseStructs.Cycle memory mostRecentCycle = l.cycles[l.cycles.length-1];
-        bool billingCheck = (mostRecentCycle.status == LicenseStructs.CycleStatus.Free || mostRecentCycle.status == LicenseStructs.CycleStatus.Paid);
-        bool durationCheck = (mostRecentCycle.endTime==0 ||
-              (block.timestamp >= mostRecentCycle.startTime && block.timestamp <= mostRecentCycle.endTime));
+        bool durationCheck = (status.endTime==0 ||
+              (block.timestamp >= status.startTime && block.timestamp <= status.endTime));
 
 
-        if ((!durationCheck && this.paymentToken() != address(0)) && (this.ownerOf(tokenId) == l.user) && (IERC20(paymentToken).allowance(msg.sender,address(this))>=_licenses[l.licenseIndex].price)) {
-            buyLicense(tokenId, l.licenseIndex, _licenses[l.licenseIndex].price);            
+        if ((!durationCheck && this.paymentToken() != address(0)) && (this.ownerOf(tokenId) == status.user) && (IERC20(paymentToken).allowance(msg.sender,address(this))>=_licenses[status.licenseId].price)) {
+            buyLicense(tokenId, status.licenseId, _licenses[status.licenseId].price);            
             durationCheck = true;
 
-            emit LicenseAutoRenewed(msg.sender, l.licenseIndex, _licenses[l.licenseIndex].price);
+            emit LicenseAutoRenewed(msg.sender, status.licenseId, _licenses[status.licenseId].price);
         }
         
-        return billingCheck && durationCheck;
+        return durationCheck;
     }
+
+    function checkValidity(uint tokenId) public view returns(bool) {
+
+        LicenseeStatus memory status = licensees[tokenId];
+        require (status.user != address(0),"not assigned or minted");
+        require(status.user == msg.sender,"valid for user of record only");
+
+        return (status.endTime==0 ||
+              (block.timestamp >= status.startTime && block.timestamp <= status.endTime));
+    }
+
 
     function addLicense(bytes32 name, uint maxCycles, uint cycleLength, uint price) onlyOwner external returns(uint) {
         _licenses.push(LicenseStructs.License(name,maxCycles,cycleLength,price,true));
@@ -101,32 +111,32 @@ contract LicenseProject is ERC721Enumerable, Ownable {
             tokenId = _tokenIds.current();
             _safeMint(user, tokenId);
         }
-        LicenseStructs.Licensee storage licensee = licensees[tokenId];
+        LicenseeStatus memory status = licensees[tokenId];
 
-        require(licensee.cycles.length < maxCycles);
+        require(status.cyclesDone < maxCycles);
 
-        if (licensee.cycles.length == 0) {
+        if (status.cyclesDone == 0) {
             uint endTime;
             if (cycleLength > 0)
                 endTime = block.timestamp + cycleLength;
 
-            licensee.cycles.push(LicenseStructs.Cycle(LicenseStructs.CycleStatus.Paid,block.timestamp,endTime));
-            licensee.user = user;
-            licensee.licenseIndex = licenseProductId;
-            licensees[tokenId] = licensee;
+            licensees[tokenId] = LicenseeStatus(user,licenseProductId,1,block.timestamp,endTime);
 
             emit LicenseBought(msg.sender, tokenId, licenseProductId);
         }
-        else
+        else        
         {
-            LicenseStructs.Cycle memory mostRecentCycle = licensee.cycles[licensee.cycles.length-1];
+            require(status.endTime != 0,"cycle is already perpetual");
+            require(licenseProductId == status.licenseId, "cannot extend another license");
 
-            require(mostRecentCycle.endTime != 0,"cycle is already perpetual");
-            
-            if (block.timestamp < mostRecentCycle.endTime)
-                licensee.cycles[licensee.cycles.length-1].endTime += cycleLength;
-            else
-                licensee.cycles.push(LicenseStructs.Cycle(LicenseStructs.CycleStatus.Paid,block.timestamp,block.timestamp + cycleLength));
+            if (block.timestamp < status.endTime)
+                status.endTime += cycleLength;
+            else {
+                status.startTime = block.timestamp;
+                status.endTime = block.timestamp + cycleLength;
+            }
+            status.cyclesDone++;
+            licensees[tokenId] = status;
             
             emit LicenseExtended(msg.sender, tokenId, licenseProductId);
         }
@@ -157,7 +167,7 @@ contract LicenseProject is ERC721Enumerable, Ownable {
         LicenseStructs.LicenseInfo[] memory result = new LicenseStructs.LicenseInfo[](count);
         for (uint i; i<count; i++) {
             uint tokenId = tokenOfOwnerByIndex(msg.sender,i);
-            result[i] = LicenseStructs.LicenseInfo(tokenId,licensees[tokenId], _licenses[licensees[tokenId].licenseIndex]);
+            result[i] = LicenseStructs.LicenseInfo(tokenId,licensees[tokenId], _licenses[licensees[tokenId].licenseId]);
         }
         return result;
     }
@@ -172,22 +182,11 @@ contract LicenseProject is ERC721Enumerable, Ownable {
         require(batchSize == 1,"bulk transfers are not supported for licenses");
         super._afterTokenTransfer(from,to,firstTokenId,batchSize);
 
-        LicenseStructs.Licensee memory l = licensees[firstTokenId];
-
-        //if this is fired from a new mint, then there will be no cycles as yet
-        if (l.cycles.length > 0) {
-            LicenseStructs.Cycle memory mostRecentCycle = l.cycles[l.cycles.length-1];
-
-            if (mostRecentCycle.endTime==0 ||
-                (block.timestamp >= mostRecentCycle.startTime &&
-                block.timestamp <= mostRecentCycle.endTime)) {
-                licensees[firstTokenId].user = to;
-            }
-
-        }
+        if (licensees[firstTokenId].user != address(0))
+            licensees[firstTokenId].user = to;
     }
 
-    function getLicenseeData(uint tokenId) external view returns(LicenseStructs.Licensee memory) {
+    function getLicenseeData(uint tokenId) external view returns(LicenseeStatus memory) {
         return licensees[tokenId];
     }
 
@@ -196,16 +195,13 @@ contract LicenseProject is ERC721Enumerable, Ownable {
     }
 
     function rentLicenseTo(uint tokenId, address renter) external {
-        LicenseStructs.Licensee memory l = licensees[tokenId];
-        require(l.cycles.length > 0, "token is not bought as yet");
+        LicenseeStatus memory status = licensees[tokenId];
+        require(status.cyclesDone > 0, "token is not bought as yet");
         require(checkValidity(tokenId),"token is not valid");
-
-        LicenseStructs.Cycle memory mostRecentCycle = l.cycles[l.cycles.length-1];
-
-        require(l.user == ownerOf(tokenId),"token already rented out)");
+        require(status.user == ownerOf(tokenId),"token already rented out)");
 
         licensees[tokenId].user = renter;
-
+        
         emit LicenseRented(renter, tokenId);
     }
 
