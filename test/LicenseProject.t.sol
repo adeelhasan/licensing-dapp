@@ -69,7 +69,7 @@ contract LicenseProjectTest is Test {
         //AR
         vm.startPrank(testAccount3);
         paymentToken.approve(address(licenseProjectTakingTokens), 1000);
-        uint newTokenId = licenseProjectTakingTokens.buyLicense(0,licenseId2,500);
+        uint newTokenId = licenseProjectTakingTokens.buyLicense(0,licenseId2,0);
         assert(newTokenId > 0);
         assert(licenseProjectTakingTokens.checkValidity(newTokenId));
         vm.stopPrank();
@@ -79,7 +79,7 @@ contract LicenseProjectTest is Test {
         //AR
         vm.startPrank(testAccount3);
         paymentToken.approve(address(licenseProjectTakingTokens), 100);
-        uint newTokenId = licenseProjectTakingTokens.buyLicense(0,licenseId2,100);
+        uint newTokenId = licenseProjectTakingTokens.buyLicense(0,licenseId2,0);
         assert(newTokenId > 0);
         vm.warp(block.timestamp + 4000);
         assert(licenseProjectTakingTokens.checkValidity(newTokenId) == false);
@@ -95,7 +95,7 @@ contract LicenseProjectTest is Test {
         //AR
         vm.startPrank(testAccount3);
         paymentToken.approve(address(licenseProjectTakingTokens), 1000);
-        uint newTokenId = licenseProjectTakingTokens.buyLicense(0,licenseId2,500);
+        uint newTokenId = licenseProjectTakingTokens.buyLicense(0,licenseId2,0);
         assert(newTokenId > 0);
         assert(licenseProjectTakingTokens.checkValidity(newTokenId));
         vm.stopPrank();
@@ -109,7 +109,7 @@ contract LicenseProjectTest is Test {
         uint tokenId = licenseProjectTakingTokens.buyLicense(0, licenseId2, 200);
         uint initialEndDate = licenseProjectTakingTokens.getLicenseeData(tokenId).endTime;
         vm.warp(block.timestamp + 100);
-        tokenId = licenseProjectTakingTokens.buyLicense(tokenId, licenseId2, 200);
+        tokenId = licenseProjectTakingTokens.buyLicense(tokenId, licenseId2, 0);
         vm.stopPrank();
         uint newEndDate = licenseProjectTakingTokens.getLicenseeData(tokenId).endTime;
         assert(initialEndDate + 3600 == newEndDate);
@@ -132,7 +132,7 @@ contract LicenseProjectTest is Test {
     function testFailWhenPayingWithEtherAndTokensAtSameTime() public {
         vm.deal(testAccount3,10 ether);
         vm.prank(testAccount3);
-        uint newTokenId = licenseProjectTakingTokens.buyLicense{value: 1 ether}(0,licenseId2,1000);
+        uint newTokenId = licenseProjectTakingTokens.buyLicense{value: 1 ether}(0,licenseId2,0);
     }
 
     function testAllLicenseListingOnlyByOwner() public {
@@ -155,7 +155,7 @@ contract LicenseProjectTest is Test {
     }
 
     function testGiftLicense() public {
-        uint newTokenId = licenseProject.giftLicense(licenseId1, testAccount);
+        uint newTokenId = licenseProject.giftLicense(testAccount, licenseId1, 0);
         assertEq(licenseProject.ownerOf(newTokenId), testAccount);
         vm.prank(testAccount);
         assert(licenseProject.checkValidity(newTokenId));
@@ -164,7 +164,7 @@ contract LicenseProjectTest is Test {
     function testAutomaticRenewalByToken() public {
         vm.startPrank(testAccount3);
         paymentToken.approve(address(licenseProjectTakingTokens), 1200);
-        uint tokenId = licenseProjectTakingTokens.buyLicense(0, licenseId2, 100);
+        uint tokenId = licenseProjectTakingTokens.buyLicense(0, licenseId2, 0);
         //TBD: balance was correctly debited
         //console.log(paymentToken.balanceOf(testAccount3));
         require(tokenId>0,"tokenId not valid");
@@ -262,6 +262,18 @@ contract LicenseProjectTest is Test {
         vm.startPrank(testAccount3);
         vm.expectRevert("valid for user of record only");
         licenseProject.checkValidity(tokenToBeRented);
+        vm.stopPrank();
+    }
+
+    function testStartingLicenseInFuture() public {
+        uint newlicenseId = licenseProject.addLicense("Simple Monthly",3,1 hours,1 ether);
+        vm.deal(testAccount3, 10 ether);
+        vm.startPrank(testAccount3);
+        uint timeInFuture = block.timestamp + 2 hours;
+        uint tokenId = licenseProject.buyLicense{value: 1 ether}(0,newlicenseId,timeInFuture);
+        require(licenseProject.checkValidity(tokenId)==false,"should not be valid yet");
+        vm.warp(timeInFuture + 10 minutes);
+        require(licenseProject.checkValidity(tokenId),"should be valid now");
         vm.stopPrank();
     }
 }

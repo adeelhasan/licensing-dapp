@@ -47,7 +47,7 @@ contract LicenseProject is ERC721Enumerable, Ownable {
 
 
         if ((!durationCheck && this.paymentToken() != address(0)) && (this.ownerOf(tokenId) == status.user) && (IERC20(paymentToken).allowance(msg.sender,address(this))>=_licenses[status.licenseId].price)) {
-            buyLicense(tokenId, status.licenseId, _licenses[status.licenseId].price);            
+            buyLicense(tokenId, status.licenseId, 0);            
             durationCheck = true;
 
             emit LicenseAutoRenewed(msg.sender, status.licenseId, _licenses[status.licenseId].price);
@@ -76,7 +76,8 @@ contract LicenseProject is ERC721Enumerable, Ownable {
         return licenseId;
     }
 
-    function buyLicense(uint tokenId, uint licenseProductId, uint amount) payable public returns(uint) {
+    function buyLicense(uint tokenId, uint licenseProductId, uint startTime) payable public returns(uint) {
+        require(startTime == 0 || startTime > block.timestamp);
         require(licenseProductId < _licenses.length,"product id is not valid");
         LicenseStructs.License memory license = _licenses[licenseProductId];
 
@@ -86,26 +87,26 @@ contract LicenseProject is ERC721Enumerable, Ownable {
         else {
             require(msg.value == 0, "payment via tokens only, ether was sent too");
             require(paymentToken != address(0), "token address not set");
-            require(license.price <= amount,"not enough tokens set");
             
             if (license.price > 0) // no debit if this is a free one
                 IERC20(paymentToken).transferFrom(msg.sender, address(this), license.price);
         }
 
-        return addCycle(msg.sender, tokenId, licenseProductId, license.cycleLength, license.maxCycles);
+        return addCycle(msg.sender, tokenId, licenseProductId, startTime, license.cycleLength, license.maxCycles);
     }
 
-    function giftLicense(uint licenseProductId, address user) external onlyOwner returns(uint) {
+    function giftLicense(address to, uint licenseProductId, uint startTime) external onlyOwner returns(uint) {
+        require(startTime == 0 || startTime > block.timestamp);
         require(licenseProductId < _licenses.length,"product id is not valid");
         LicenseStructs.License memory license = _licenses[licenseProductId];
-        uint tokenId =  addCycle(user, 0, licenseProductId, license.cycleLength, license.maxCycles);
+        uint tokenId =  addCycle(to, 0, licenseProductId, startTime, license.cycleLength, license.maxCycles);
 
-        emit LicenseGifted(user, tokenId);
+        emit LicenseGifted(to, tokenId);
 
         return tokenId;
     }
 
-    function addCycle(address user, uint tokenId,uint licenseProductId,uint cycleLength, uint maxCycles) private returns(uint) {
+    function addCycle(address user, uint tokenId, uint licenseProductId, uint startTime, uint cycleLength, uint maxCycles) private returns(uint) {
         if (tokenId == 0) {
             _tokenIds.increment();
             tokenId = _tokenIds.current();
@@ -116,11 +117,14 @@ contract LicenseProject is ERC721Enumerable, Ownable {
         require(status.cyclesDone < maxCycles);
 
         if (status.cyclesDone == 0) {
-            uint endTime;
-            if (cycleLength > 0)
-                endTime = block.timestamp + cycleLength;
+            uint endTime;            
+            if (startTime == 0)
+                startTime = block.timestamp;
 
-            licensees[tokenId] = LicenseeStatus(user,licenseProductId,1,block.timestamp,endTime);
+            if (cycleLength > 0)
+                endTime = startTime + cycleLength;
+
+            licensees[tokenId] = LicenseeStatus(user,licenseProductId,1,startTime,endTime);
 
             emit LicenseBought(msg.sender, tokenId, licenseProductId);
         }
@@ -132,7 +136,10 @@ contract LicenseProject is ERC721Enumerable, Ownable {
             if (block.timestamp < status.endTime)
                 status.endTime += cycleLength;
             else {
-                status.startTime = block.timestamp;
+                if (startTime == 0)
+                    status.startTime = block.timestamp;
+                else
+                    status.startTime = startTime;
                 status.endTime = block.timestamp + cycleLength;
             }
             status.cyclesDone++;
