@@ -2,49 +2,31 @@
 
 pragma solidity ^0.8.13;
 
-
-
-struct LicenseeStatus {
+struct Licensee {
     address user;
     uint licenseId;
-    uint cyclesDone;
+    uint renewalsCount;
     uint startTime;
     uint endTime;
 }
 
+enum LicenseStatus { None, Active, NotActive }
+struct License {
+    bytes32 name;
+    uint maxRenewals;
+    uint length;
+    uint price;
+    LicenseStatus status;
+}
 
-library LicenseStructs {
-    enum CycleStatus { Unpaid, Free, Paid }
-    struct Cycle {
-        CycleStatus status;
-        uint startTime; //a 0 would mean start immediately
-        uint endTime;   //a 0 would mean perpetual
-    }
+struct LicenseeInfo {
+    uint tokenId;
+    Licensee licensee;
+    License license;
+}
 
-    struct License {
-        bytes32 name;
-        uint maxCycles;
-        uint cycleLength;
-        uint price;
-        bool active;
-    }
-
-    struct Licensee {
-        uint licenseIndex; //Discussion, instead of index, we can have a license code?
-        address user;
-        Cycle[] cycles;
-    }
-
-    struct LicenseInfo {
-        uint tokenId;
-        LicenseeStatus licenseeInfo;
-        License licenseinfo;
-    }
-
-    struct LicenseProjectStub {
-        address contractAddress;
-        string name;
-        string symbol;
-    }
-
+struct LicenseProjectStub {
+    address contractAddress;
+    string name;
+    string symbol;
 }

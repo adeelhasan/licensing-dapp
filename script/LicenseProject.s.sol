@@ -7,8 +7,9 @@ import "src/LicenseProject.sol";
 import "src/LicensingOrganization.sol";
 import "openzeppelin-contracts/token/ERC20/ERC20.sol";
 
+/// @notice just a helper contract
 contract PaymentToken is ERC20 {
-    constructor(string memory name, string memory symbol, uint initialSupply) ERC20(name,symbol) public {
+    constructor(string memory name, string memory symbol, uint initialSupply) ERC20(name,symbol) {
         _mint(msg.sender,initialSupply);
     }
 }
@@ -62,32 +63,35 @@ contract LicenseProjectScript is Script {
 
         vm.startBroadcast(pk_anvilAccount1);
 
-        uint tokenId = licenseProject1.buyLicense(0,licenseId1, 0);
-        tokenId = licenseProject1.buyLicense{value: 1 ether}(0,licenseId2, 0);
-        tokenId = licenseProject2.buyLicense{value: 5 ether}(0,licenseId5,0);
+        uint tokenId = licenseProject1.buyLicense(licenseId1, 0);
+        tokenId = licenseProject1.buyLicense{value: 1 ether}(licenseId2, 0);
+        tokenId = licenseProject2.buyLicense{value: 5 ether}(licenseId5,0);
+        tokenId = licenseProject1.buyLicense{value: 5 ether}(licenseId3,block.timestamp + 5 days);
 
         paymentToken.approve(address(licenseProject3), 20);
-        tokenId = licenseProject3.buyLicense(0,licenseId6,10);
+        tokenId = licenseProject3.buyLicense(licenseId6,block.timestamp + 10 minutes);
 
         vm.stopBroadcast();
 
         vm.startBroadcast(pk_anvilAccount2);
 
-        tokenId = licenseProject1.buyLicense(0,licenseId1, 0);
-        tokenId = licenseProject2.buyLicense(0,licenseId4,0);
+        tokenId = licenseProject1.buyLicense(licenseId1, 0);
+        tokenId = licenseProject2.buyLicense(licenseId4,0);
 
         paymentToken.approve(address(licenseProject3), 20);
-        tokenId = licenseProject3.buyLicense(0,licenseId6,10);
+        tokenId = licenseProject3.buyLicense(licenseId6,0);
 
         vm.stopBroadcast();
 
         vm.startBroadcast(pk_anvilAccount3);
 
-        tokenId = licenseProject1.buyLicense(0,licenseId1, 0);
-        tokenId = licenseProject2.buyLicense{value: 5 ether}(0,licenseId5,0);
+        tokenId = licenseProject1.buyLicense(licenseId1, 0);
+        tokenId = licenseProject2.buyLicense{value: 5 ether}(licenseId5,0);
+        tokenId = licenseProject1.buyLicense{value: 1 ether}(licenseId2, 0);
+
 
         paymentToken.approve(address(licenseProject3), 20);
-        tokenId = licenseProject3.buyLicense(0,licenseId6,10);
+        tokenId = licenseProject3.buyLicense(licenseId6,0);
 
         vm.stopBroadcast();
     }

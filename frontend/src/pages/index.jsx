@@ -165,7 +165,7 @@ export default function Home() {
                 {licenses.map((license, index) => <LicenseItem
                   license={license}
                   isOwner={isOwner}
-                  buyLicense={() => buyLicense(0, index, license)}
+                  buyLicense={() => buyLicense( index, license)}
                   key={index}
                 />
                 )}

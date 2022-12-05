@@ -3,13 +3,13 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import "src/License.sol";
 import "src/LicenseProject.sol";
 import "openzeppelin-contracts/token/ERC20/ERC20.sol";
-import "../src/LicenseStructs.sol";
+import "src/LicenseStructs.sol";
 
+/// @notice just a helper contract
 contract PaymentToken is ERC20 {
-    constructor(string memory name, string memory symbol, uint initialSupply) ERC20(name,symbol) public {
+    constructor(string memory name, string memory symbol, uint initialSupply) ERC20(name,symbol) {
         _mint(msg.sender,initialSupply);
     }
 }
@@ -46,7 +46,7 @@ contract LicenseProjectTest is Test {
     function testPerpetualLicense() public {
         vm.deal(testAccount,10 ether);
         vm.startPrank(testAccount);
-        uint tokenId = licenseProject.buyLicense{value: 1 ether}(0,licenseId1,0);
+        uint tokenId = licenseProject.buyLicense{value: 1 ether}(licenseId1,0);
         assert(tokenId>0);
         assert(licenseProject.checkValidity(tokenId));
         assert(licenseProject.ownerOf(tokenId) == testAccount);
@@ -60,56 +60,45 @@ contract LicenseProjectTest is Test {
 
     
 /*     function testExpectEmitAddLicenseEvent() public {
-        vm.expectEmit(false, false, false, true);
-        uint licenseId = licenseProject.addLicense("Evergreen Perpetual 2",1,0,1 ether);
-        emit LicenseAdded(licenseId);
-    }
- */
+        vm.expectEmit(false, false, false, false);
+        licenseProject.addLicense("Evergreen Perpetual 2",1,0,1 ether);
+    } */
+
     function testPaymentByToken() public {
-        //AR
         vm.startPrank(testAccount3);
         paymentToken.approve(address(licenseProjectTakingTokens), 1000);
-        uint newTokenId = licenseProjectTakingTokens.buyLicense(0,licenseId2,0);
+        uint newTokenId = licenseProjectTakingTokens.buyLicense(licenseId2,0);
         assert(newTokenId > 0);
         assert(licenseProjectTakingTokens.checkValidity(newTokenId));
         vm.stopPrank();
     }
 
     function testValidityFailAfterCycleEnd() public {
-        //AR
         vm.startPrank(testAccount3);
         paymentToken.approve(address(licenseProjectTakingTokens), 100);
-        uint newTokenId = licenseProjectTakingTokens.buyLicense(0,licenseId2,0);
+        uint newTokenId = licenseProjectTakingTokens.buyLicense(licenseId2,0);
         assert(newTokenId > 0);
         vm.warp(block.timestamp + 4000);
         assert(licenseProjectTakingTokens.checkValidity(newTokenId) == false);
         vm.stopPrank();
     }
 
-    // function testValidityFailBeforeCycleStart() public {
-    //     //AR
-    //      As we have removed start time for now, this is not needed.
-    // }
-
     function testValidityPassBeforeCycleEnd() public {
-        //AR
         vm.startPrank(testAccount3);
         paymentToken.approve(address(licenseProjectTakingTokens), 1000);
-        uint newTokenId = licenseProjectTakingTokens.buyLicense(0,licenseId2,0);
+        uint newTokenId = licenseProjectTakingTokens.buyLicense(licenseId2,0);
         assert(newTokenId > 0);
         assert(licenseProjectTakingTokens.checkValidity(newTokenId));
         vm.stopPrank();
     }
 
-
     function testCycleExtendsIfPayingBeforeEndDate() public {
-        //AR
         vm.startPrank(testAccount3);
         paymentToken.approve(address(licenseProjectTakingTokens), 1000);
-        uint tokenId = licenseProjectTakingTokens.buyLicense(0, licenseId2, 200);
+        uint tokenId = licenseProjectTakingTokens.buyLicense(licenseId2, 200);
         uint initialEndDate = licenseProjectTakingTokens.getLicenseeData(tokenId).endTime;
         vm.warp(block.timestamp + 100);
-        tokenId = licenseProjectTakingTokens.buyLicense(tokenId, licenseId2, 0);
+        licenseProjectTakingTokens.extendLicense(tokenId, 0);
         vm.stopPrank();
         uint newEndDate = licenseProjectTakingTokens.getLicenseeData(tokenId).endTime;
         assert(initialEndDate + 3600 == newEndDate);
@@ -117,14 +106,14 @@ contract LicenseProjectTest is Test {
 
     function testFailIfPayingTwiceForPerpetualLicense() public {
         vm.startPrank(testAccount2);
-        uint tokenId = licenseProject.buyLicense(0, licenseId1, 0);
-        tokenId = licenseProject.buyLicense(tokenId, licenseId1, 0);
+        uint tokenId = licenseProject.buyLicense(licenseId1, 0);
+        licenseProject.extendLicense(tokenId, 0);
         vm.stopPrank();
     }
 
     function testFailIfCheckingValidityFromNonLicensee() public {
         vm.prank(testAccount2);
-        uint tokenId = licenseProject.buyLicense(0, licenseId1, 0);
+        uint tokenId = licenseProject.buyLicense(licenseId1, 0);
         assert(tokenId > 0);
         assert(licenseProject.checkValidity(tokenId));
     }
@@ -132,7 +121,7 @@ contract LicenseProjectTest is Test {
     function testFailWhenPayingWithEtherAndTokensAtSameTime() public {
         vm.deal(testAccount3,10 ether);
         vm.prank(testAccount3);
-        uint newTokenId = licenseProjectTakingTokens.buyLicense{value: 1 ether}(0,licenseId2,0);
+        licenseProjectTakingTokens.buyLicense{value: 1 ether}(licenseId2,0);
     }
 
     function testAllLicenseListingOnlyByOwner() public {
@@ -164,7 +153,7 @@ contract LicenseProjectTest is Test {
     function testAutomaticRenewalByToken() public {
         vm.startPrank(testAccount3);
         paymentToken.approve(address(licenseProjectTakingTokens), 1200);
-        uint tokenId = licenseProjectTakingTokens.buyLicense(0, licenseId2, 0);
+        uint tokenId = licenseProjectTakingTokens.buyLicense(licenseId2, 0);
         //TBD: balance was correctly debited
         //console.log(paymentToken.balanceOf(testAccount3));
         require(tokenId>0,"tokenId not valid");
@@ -177,7 +166,7 @@ contract LicenseProjectTest is Test {
     function testTokenTransferShouldPreserveValidity() public {
         vm.deal(testAccount,10 ether);
         vm.startPrank(testAccount);
-        uint tokenId = licenseProject.buyLicense{value: 1 ether}(0,licenseId1,0);
+        uint tokenId = licenseProject.buyLicense{value: 1 ether}(licenseId1,0);
         assert(tokenId>0);
         assert(licenseProject.checkValidity(tokenId));
         licenseProject.approve(testAccount2, tokenId);
@@ -194,7 +183,7 @@ contract LicenseProjectTest is Test {
     function testFailIfNotExactChangeGiven() public {
         vm.deal(testAccount2,10 ether);
         vm.startPrank(testAccount2);
-        uint newTokenId = licenseProject.buyLicense{value: 2 ether}(0,licenseId1,0);
+        licenseProject.buyLicense{value: 2 ether}(licenseId1,0);
         vm.stopPrank();
     }
 
@@ -206,54 +195,54 @@ contract LicenseProjectTest is Test {
         for(uint i; i < numOfLicenses; i++){
             licenseIndexArr[i] = licenseProject4.addLicense("Evergreen Perpetual",1,0,1 ether);
         }
-        LicenseStructs.License[] memory res;
+        License[] memory res;
         res = licenseProject4.allLicences();
         for(uint i; i < numOfLicenses; i++){
             require(licenseProject4.getLicenseData(licenseIndexArr[i]).name == res[i].name, "License Name don't match");
-            require(licenseProject4.getLicenseData(licenseIndexArr[i]).maxCycles == res[i].maxCycles, "License maxCycles don't match");
-            require(licenseProject4.getLicenseData(licenseIndexArr[i]).cycleLength == res[i].cycleLength, "License cycleLength don't match");
+            require(licenseProject4.getLicenseData(licenseIndexArr[i]).maxRenewals == res[i].maxRenewals, "License maxCycles don't match");
+            require(licenseProject4.getLicenseData(licenseIndexArr[i]).length == res[i].length, "License cycleLength don't match");
             require(licenseProject4.getLicenseData(licenseIndexArr[i]).price == res[i].price, "License price don't match");
-            require(licenseProject4.getLicenseData(licenseIndexArr[i]).active == res[i].active, "License active don't match");
+            require(licenseProject4.getLicenseData(licenseIndexArr[i]).status == res[i].status, "License active don't match");
         }
     }
 
     function testMyLicensesList() public {
         vm.deal(testAccount2,10 ether);
         vm.startPrank(testAccount2);
-        uint tokenId1 = licenseProject.buyLicense{value: 1 ether}(0,licenseId1,0);
-        uint tokenId2 = licenseProject.buyLicense{value: 1 ether}(0,licenseId3,0);
-        LicenseStructs.LicenseInfo[] memory res = licenseProject.myLicenses();
+        uint tokenId1 = licenseProject.buyLicense{value: 1 ether}(licenseId1,0);
+        uint tokenId2 = licenseProject.buyLicense{value: 1 ether}(licenseId3,0);
+        LicenseeInfo[] memory res = licenseProject.myLicenses();
         require(res[0].tokenId == tokenId1, "Token Id don't match");
         require(res[1].tokenId == tokenId2, "Token Id don't match");
-        LicenseStructs.License memory license1 = licenseProject.getLicenseData(licenseId1);
-        LicenseStructs.License memory license3 = licenseProject.getLicenseData(licenseId3);
-        LicenseeStatus memory licensee1 = licenseProject.getLicenseeData(tokenId1);
-        LicenseeStatus memory licensee2 = licenseProject.getLicenseeData(tokenId2);
+        License memory license1 = licenseProject.getLicenseData(licenseId1);
+        License memory license3 = licenseProject.getLicenseData(licenseId3);
+        Licensee memory licensee1 = licenseProject.getLicenseeData(tokenId1);
+        Licensee memory licensee2 = licenseProject.getLicenseeData(tokenId2);
 
-        require(license1.name == res[0].licenseinfo.name, "License Name don't match");
-        require(license1.maxCycles == res[0].licenseinfo.maxCycles, "License maxCycles don't match");
-        require(license1.cycleLength == res[0].licenseinfo.cycleLength, "License cycleLength don't match");
-        require(license1.price == res[0].licenseinfo.price, "License price don't match");
-        require(license1.active == res[0].licenseinfo.active, "License active don't match");
-        require(license3.name == res[1].licenseinfo.name, "License Name don't match");
-        require(license3.maxCycles == res[1].licenseinfo.maxCycles, "License maxCycles don't match");
-        require(license3.cycleLength == res[1].licenseinfo.cycleLength, "License cycleLength don't match");
-        require(license3.price == res[1].licenseinfo.price, "License price don't match");
-        require(license3.active == res[1].licenseinfo.active, "License active don't match");
+        require(license1.name == res[0].license.name, "License Name don't match");
+        require(license1.maxRenewals == res[0].license.maxRenewals, "License maxCycles don't match");
+        require(license1.length == res[0].license.length, "License cycleLength don't match");
+        require(license1.price == res[0].license.price, "License price don't match");
+        require(license1.status == res[0].license.status, "License active don't match");
+        require(license3.name == res[1].license.name, "License Name don't match");
+        require(license3.maxRenewals == res[1].license.maxRenewals, "License maxCycles don't match");
+        require(license3.length == res[1].license.length, "License cycleLength don't match");
+        require(license3.price == res[1].license.price, "License price don't match");
+        require(license3.status == res[1].license.status, "License active don't match");
 
-        require(licensee1.licenseId == res[0].licenseeInfo.licenseId, "Licensee licenseIndex don't match");
-        require(licensee1.user == res[0].licenseeInfo.user, "Licensee user don't match");
-        require(licensee1.cyclesDone == res[0].licenseeInfo.cyclesDone, "Licensee cycles don't match");
-        require(licensee2.licenseId == res[1].licenseeInfo.licenseId, "Licensee licenseIndex don't match");
-        require(licensee2.user == res[1].licenseeInfo.user, "Licensee user don't match");
-        require(licensee2.cyclesDone == res[1].licenseeInfo.cyclesDone, "Licensee cycles don't match");
+        require(licensee1.licenseId == res[0].licensee.licenseId, "Licensee licenseIndex don't match");
+        require(licensee1.user == res[0].licensee.user, "Licensee user don't match");
+        require(licensee1.renewalsCount == res[0].licensee.renewalsCount, "Licensee cycles don't match");
+        require(licensee2.licenseId == res[1].licensee.licenseId, "Licensee licenseIndex don't match");
+        require(licensee2.user == res[1].licensee.user, "Licensee user don't match");
+        require(licensee2.renewalsCount == res[1].licensee.renewalsCount, "Licensee cycles don't match");
     }
 
     function testRentingLicense() public {
         uint newlicenseId = licenseProject.addLicense("Simple Monthly",3,1 hours,1 ether);
         vm.deal(testAccount3, 10 ether);
         vm.startPrank(testAccount3);
-        uint tokenToBeRented = licenseProject.buyLicense{value: 1 ether}(0,newlicenseId,0);
+        uint tokenToBeRented = licenseProject.buyLicense{value: 1 ether}(newlicenseId,0);
         require(licenseProject.checkValidity(tokenToBeRented),"expected licensee not there");
         licenseProject.rentLicenseTo(tokenToBeRented,testAccount2);
         vm.stopPrank();
@@ -262,6 +251,9 @@ contract LicenseProjectTest is Test {
         vm.startPrank(testAccount3);
         vm.expectRevert("valid for user of record only");
         licenseProject.checkValidity(tokenToBeRented);
+        licenseProject.approve(testAccount, tokenToBeRented);
+        vm.expectRevert("cannot transfer rented token");
+        licenseProject.transferFrom(testAccount3, testAccount, tokenToBeRented);
         vm.stopPrank();
     }
 
@@ -270,7 +262,7 @@ contract LicenseProjectTest is Test {
         vm.deal(testAccount3, 10 ether);
         vm.startPrank(testAccount3);
         uint timeInFuture = block.timestamp + 2 hours;
-        uint tokenId = licenseProject.buyLicense{value: 1 ether}(0,newlicenseId,timeInFuture);
+        uint tokenId = licenseProject.buyLicense{value: 1 ether}(newlicenseId,timeInFuture);
         require(licenseProject.checkValidity(tokenId)==false,"should not be valid yet");
         vm.warp(timeInFuture + 10 minutes);
         require(licenseProject.checkValidity(tokenId),"should be valid now");

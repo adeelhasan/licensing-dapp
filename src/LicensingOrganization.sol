@@ -6,14 +6,16 @@ import "openzeppelin-contracts/access/Ownable.sol";
 import "./LicenseStructs.sol";
 import "./LicenseProject.sol";
 
-//one software product would have one project
+/// @notice this is an optional container for license projects
+///         multiple products can be associated with the same organization
+/// @dev    create project and register it with an organisation contract if needed
 contract LicensingOrganisation is Ownable {
 
     string public name;
     LicenseProject[] private _projects;
 
     constructor(string memory name_) {
-        name = name;
+        name = name_;
     }
 
     function addProject(LicenseProject project) onlyOwner external {
@@ -21,11 +23,11 @@ contract LicensingOrganisation is Ownable {
         _projects.push(project);
     }
 
-    function projects() external view returns (LicenseStructs.LicenseProjectStub[] memory) {
+    function projects() external view returns (LicenseProjectStub[] memory) {
         uint projectsCount = _projects.length;
-        LicenseStructs.LicenseProjectStub[] memory stubs = new LicenseStructs.LicenseProjectStub[](projectsCount);
-        for( uint i; i<projectsCount; i++) {
-            stubs[i] = LicenseStructs.LicenseProjectStub(address(_projects[i]),_projects[i].name(),_projects[i].symbol());
+        LicenseProjectStub[] memory stubs = new LicenseProjectStub[](projectsCount);
+        for( uint i; i < projectsCount; i++) {
+            stubs[i] = LicenseProjectStub(address(_projects[i]),_projects[i].name(),_projects[i].symbol());
         }
         return stubs;
     }
