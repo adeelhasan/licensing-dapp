@@ -286,6 +286,7 @@ contract LicenseProject is ERC721Enumerable, Ownable {
                 else
                     licensee.startTime = startTime;
                 licensee.endTime = block.timestamp + length;
+                licensee.user = ownerOf(tokenId);   //this will end any rented
             }
             licensee.renewalsCount++;
             licensees[tokenId] = licensee;
