@@ -95,10 +95,10 @@ contract LicenseProjectTest is Test {
     function testCycleExtendsIfPayingBeforeEndDate() public {
         vm.startPrank(testAccount3);
         paymentToken.approve(address(licenseProjectTakingTokens), 1000);
-        uint tokenId = licenseProjectTakingTokens.buyLicense(licenseId2, 200);
+        uint tokenId = licenseProjectTakingTokens.buyLicense(licenseId2, 0);
         uint initialEndDate = licenseProjectTakingTokens.getLicenseeData(tokenId).endTime;
         vm.warp(block.timestamp + 100);
-        licenseProjectTakingTokens.extendLicense(tokenId, 0);
+        licenseProjectTakingTokens.renewLicense(tokenId, 0);
         vm.stopPrank();
         uint newEndDate = licenseProjectTakingTokens.getLicenseeData(tokenId).endTime;
         assert(initialEndDate + 3600 == newEndDate);
@@ -107,7 +107,7 @@ contract LicenseProjectTest is Test {
     function testFailIfPayingTwiceForPerpetualLicense() public {
         vm.startPrank(testAccount2);
         uint tokenId = licenseProject.buyLicense(licenseId1, 0);
-        licenseProject.extendLicense(tokenId, 0);
+        licenseProject.renewLicense(tokenId, 0);
         vm.stopPrank();
     }
 
@@ -258,14 +258,21 @@ contract LicenseProjectTest is Test {
     }
 
     function testStartingLicenseInFuture() public {
-        uint newlicenseId = licenseProject.addLicense("Simple Monthly",3,1 hours,1 ether);
+        uint newlicenseId = licenseProject.addLicense("Simple Monthly", 3, 1 hours, 1 ether);
         vm.deal(testAccount3, 10 ether);
         vm.startPrank(testAccount3);
         uint timeInFuture = block.timestamp + 2 hours;
-        uint tokenId = licenseProject.buyLicense{value: 1 ether}(newlicenseId,timeInFuture);
+        uint tokenId = licenseProject.buyLicense{value: 1 ether}(newlicenseId, timeInFuture);
         require(licenseProject.checkValidity(tokenId)==false,"should not be valid yet");
         vm.warp(timeInFuture + 10 minutes);
         require(licenseProject.checkValidity(tokenId),"should be valid now");
+        vm.warp(timeInFuture + 90 minutes);
+        require(licenseProject.checkValidity(tokenId) == false,"should not be valid now");
+        licenseProject.renewLicense{value: 1 ether}(tokenId, block.timestamp + 3 hours);
+        vm.warp(block.timestamp + 30 minutes);
+        require(licenseProject.checkValidity(tokenId) == false,"should not be valid now");
+        vm.warp(block.timestamp + 3 hours + 10 minutes);
+        require(licenseProject.checkValidity(tokenId) == true,"should be valid now");
         vm.stopPrank();
     }
 }

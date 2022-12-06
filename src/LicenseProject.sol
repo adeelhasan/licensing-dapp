@@ -20,7 +20,7 @@ contract LicenseProject is ERC721Enumerable, Ownable {
 
     event LicenseAdded(uint indexed licenseId);
     event LicenseBought(address indexed licensee, uint tokenId, uint licenseId);
-    event LicenseExtended(address indexed licensee, uint tokenId, uint licenseId);
+    event LicenseRenewed(address indexed licensee, uint tokenId, uint licenseId);
     event LicenseGifted(address indexed licensee, uint tokenId);
     event LicenseRented(address indexed renter, uint tokentId);
     event LicenseAutoRenewed(address indexed liscensee , uint licenseId, uint tokensPaid);
@@ -65,7 +65,7 @@ contract LicenseProject is ERC721Enumerable, Ownable {
              (IERC20(paymentToken).allowance(msg.sender,address(this)) >=
                 _licenses[licensee.licenseId].price)
         ) {
-            extendLicense(tokenId, START_NOW);
+            renewLicense(tokenId, START_NOW);
             durationCheck = true;
 
             emit LicenseAutoRenewed(msg.sender, licensee.licenseId, _licenses[licensee.licenseId].price);
@@ -77,10 +77,11 @@ contract LicenseProject is ERC721Enumerable, Ownable {
     /// @notice extend the duration for an existing licensee
     /// @param tokenId the token representing the licensee
     /// @param startTime the starting time, or 0 if needing to start immediately
-    function extendLicense(
+    function renewLicense(
         uint tokenId,
         uint startTime
     ) payable public {
+        require(this.ownerOf(tokenId) != address(0),"token id has not been minted");        
         require(startTime == START_NOW || startTime > block.timestamp,"startTime is not correct");
 
         Licensee memory licensee = licensees[tokenId];
@@ -278,20 +279,24 @@ contract LicenseProject is ERC721Enumerable, Ownable {
             require(licenseId == licensee.licenseId, "cannot extend another license");
             require(licensee.endTime != PERPETUAL,"license is already perpetual");
 
-            if (block.timestamp < licensee.endTime)
+            if (checkValidity(tokenId) || (licensee.startTime > block.timestamp))
+                //currently valid or valid in the future, ignore start and simply extend
+                //the other choice is throw if new startTime is conflicting
                 licensee.endTime += length;
             else {
                 if (startTime == START_NOW)
                     licensee.startTime = block.timestamp;
                 else
                     licensee.startTime = startTime;
-                licensee.endTime = block.timestamp + length;
-                licensee.user = ownerOf(tokenId);   //this will end any rented
+                licensee.endTime = licensee.startTime + length;
+
+                //this will close out renters, and only done if resetting both start and endTime
+                licensee.user = ownerOf(tokenId);
             }
             licensee.renewalsCount++;
             licensees[tokenId] = licensee;
             
-            emit LicenseExtended(msg.sender, tokenId, licenseId);
+            emit LicenseRenewed(msg.sender, tokenId, licenseId);
         }
     }
 
