@@ -91,6 +91,7 @@ contract LicenseProject is ERC721Enumerable, Ownable {
     }
 
     /// @notice for a user to purchase a license
+    /// @dev payment is accepted in ether or in pre-approved tokens, see _collectPayment
     /// @param licenseId to get the license data
     /// @param startTime can be 0 to start immediately, or has to be in the future
     function buyLicense(
@@ -201,6 +202,9 @@ contract LicenseProject is ERC721Enumerable, Ownable {
         return newTokenId;
     }
 
+    /// @notice common for billing
+    /// @dev    either ether is sent in exact amount, or pre-approved tokens are transferred
+    ///         if paymentToken was set, then it's the default mode
     function _collectPayment(uint price) internal {
         if (paymentToken == address(0)) {
             require(price == msg.value,"only exact change taken");
