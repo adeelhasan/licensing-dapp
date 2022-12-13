@@ -22,7 +22,7 @@ The check for a license is done via the following function:
 function checkValidity(uint tokenId) public returns (bool)
 ```
 
-This function uses approximately 1300 gas and is designed for frequent, runtime usage. 
+This function uses approximately 21000 + 1300 gas and is designed for frequent, runtime usage. 
 
 The context can guide how often the check should be called. It is recommended to get and then cache licensee data, but to defer to the onchain check for critical checks.
 

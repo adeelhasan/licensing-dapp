@@ -41,12 +41,8 @@ contract LicenseProject is ERC721Enumerable, Ownable {
     }
 
     /// @notice the primary check for the licensee validity
-    function checkValidity(uint tokenId) public view returns(bool) {
-        Licensee memory licensee = licensees[tokenId];
-        require (licensee.user != address(0),"not assigned or minted");
-        require(licensee.user == msg.sender,"valid for user of record only");
-        return (licensee.endTime==PERPETUAL ||
-              (block.timestamp >= licensee.startTime && block.timestamp <= licensee.endTime));
+    function checkValidity(uint tokenId) virtual public view returns(bool) {
+        return _checkValidity(tokenId, msg.sender);
     }
 
     /// @notice this will auto renewal as part of the validity check
@@ -121,7 +117,7 @@ contract LicenseProject is ERC721Enumerable, Ownable {
         uint price
     ) onlyOwner 
     external returns(uint) {
-        _licenses.push(License(name, maxRenewals, length, price, LicenseStatus.Active));
+        _licenses.push(License(name, maxRenewals, length, price, LicenseStatus.Active, false));
         uint licenseId = _licenses.length-1;
 
         emit LicenseAdded(licenseId);
@@ -214,7 +210,7 @@ contract LicenseProject is ERC721Enumerable, Ownable {
             require(paymentToken != address(0), "token address not set");
             
             if (price > 0)
-                IERC20(paymentToken).transferFrom(msg.sender, address(this), price);
+                require(IERC20(paymentToken).transferFrom(msg.sender, address(this), price), "problem in token transfer");
         }
     }
 
@@ -304,4 +300,14 @@ contract LicenseProject is ERC721Enumerable, Ownable {
         }
     }
 
+    function _checkValidity(uint tokenId, address user) internal view returns (bool) {
+        Licensee memory licensee = licensees[tokenId];
+        require (licensee.user != address(0),"not assigned or minted");
+        if ((user != address(0)))
+            require(licensee.user == user,"valid for user of record only");
+        return (licensee.endTime==PERPETUAL ||
+              (block.timestamp >= licensee.startTime && block.timestamp <= licensee.endTime));
+    }
+    
 }
+

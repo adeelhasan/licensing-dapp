@@ -11,12 +11,14 @@ struct Licensee {
 }
 
 enum LicenseStatus { None, Active, NotActive }
+
 struct License {
     bytes32 name;
     uint maxRenewals;
     uint length;
     uint price;
     LicenseStatus status;
+    bool allowRenting;
 }
 
 struct LicenseeInfo {
@@ -30,3 +32,4 @@ struct LicenseProjectStub {
     string name;
     string symbol;
 }
+
