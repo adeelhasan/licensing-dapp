@@ -3,9 +3,8 @@ pragma solidity ^0.8.13;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import "src/RentableLicenseProject.sol";
 import "openzeppelin-contracts/token/ERC20/ERC20.sol";
-import "src/LicenseStructs.sol";
+import "src/RentableLicenseProject.sol";
 
 /// @notice just a helper contract
 contract PaymentToken is ERC20 {
@@ -22,6 +21,8 @@ contract RentableLicenseProjectTest is Test {
     uint licenseId3;
     uint licenseTokenId1;
     uint licenseTokenId2;
+    uint listingId1;
+    uint listingId2;
     address testAccount1;
     address testAccount2;
     address renter1;
@@ -30,15 +31,15 @@ contract RentableLicenseProjectTest is Test {
 
 
     function setUp() public {
-        paymentToken = new PaymentToken("SILVER","SLV",1000000);
-        licenseProject = new RentableLicenseProject("A Project With Rentables","RPRO",address(0));
-        licenseProject2 = new RentableLicenseProject("Rent with Tokens","RPROT",address(paymentToken));
+        paymentToken = new PaymentToken("SILVER","SLV", 1000000);
+        licenseProject = new RentableLicenseProject("A Project With Rentables", "RPRO", address(0));
+        licenseProject2 = new RentableLicenseProject("Rent with Tokens", "RPROT", address(paymentToken));
 
         //a license with one cycle, worth 1 ether, and no duration ie. perpetual
-        licenseId1 = licenseProject.addLicense("Evergreen Perpetual",1,0,1 ether);
-        licenseId2 = licenseProject.addLicense("Evergreen Perpetual Again",1,100,100);
+        licenseId1 = licenseProject.addLicense("Evergreen Perpetual", 1, 0, 1 ether);
+        licenseId2 = licenseProject.addLicense("Evergreen Perpetual Again", 1, 100, 100);
 
-        licenseId3 = licenseProject2.addLicense("Annual License",1,365 days,500);
+        licenseId3 = licenseProject2.addLicense("Annual License", 1, 365 days, 500);
 
         testAccount1 = vm.addr(0xABCD);
         testAccount2 = vm.addr(0xDABC);
@@ -50,20 +51,20 @@ contract RentableLicenseProjectTest is Test {
         vm.deal(renter1, 5 ether);
         vm.deal(renter2, 5 ether);
 
-        paymentToken.transfer(testAccount2,1000);
-        paymentToken.transfer(renter2,1000);
+        paymentToken.transfer(testAccount2, 1000);
+        paymentToken.transfer(renter2, 1000);
 
         vm.startPrank(testAccount1);
 
-        licenseTokenId1 = licenseProject.buyLicense{value: 1 ether}(licenseId1,0);
-        licenseProject.addRentalListing(licenseTokenId1,RentalTimeUnit.Daily,0.1 ether,3);
+        licenseTokenId1 = licenseProject.buyLicense{value: 1 ether}(licenseId1, 0);
+        licenseProject.addRentalListing(licenseTokenId1, RentalTimeUnit.Daily, 0.1 ether, 3, 0);
 
         vm.stopPrank();
 
         vm.startPrank(testAccount2);
-        paymentToken.approve(address(licenseProject2),1000);
-        licenseTokenId2 = licenseProject2.buyLicense(licenseId3,0);
-        licenseProject2.addRentalListing(licenseTokenId2,RentalTimeUnit.Daily,1,10);
+        paymentToken.approve(address(licenseProject2), 1000);
+        licenseTokenId2 = licenseProject2.buyLicense(licenseId3, 0);
+        licenseProject2.addRentalListing(licenseTokenId2, RentalTimeUnit.Daily, 1, 10, 0);
         vm.stopPrank();
 
     }
@@ -73,7 +74,7 @@ contract RentableLicenseProjectTest is Test {
         require(licenseProject.checkValidity(licenseTokenId1),"license is good for owner");
 
         vm.startPrank(renter1);
-        licenseProject.rent{value: 0.4 ether}(licenseTokenId1,block.timestamp,4);
+        licenseProject.buyLease{value: 0.4 ether}(licenseTokenId1, RentalTimeUnit.Daily, block.timestamp, 4);
         require(licenseProject.checkValidity(licenseTokenId1),"license valid after renting");
         vm.stopPrank();
 
@@ -96,18 +97,18 @@ contract RentableLicenseProjectTest is Test {
     }
 
     function testFailIfRentingLessThanRequiredMinimum() public {
-        licenseProject.rent{value: 0.4 ether}(licenseTokenId1,block.timestamp,2);
+        licenseProject.buyLease{value: 0.4 ether}(licenseTokenId1, RentalTimeUnit.Daily, block.timestamp,2);
     }
 
     function testFailIfRentingWithLessEther() public {
-        licenseProject.rent{value: 0.3 ether}(licenseTokenId1,block.timestamp,4);
+        licenseProject.buyLease{value: 0.3 ether}(licenseTokenId1, RentalTimeUnit.Daily, block.timestamp, 4);
     }
 
     function testRentingWithToken() public {
         vm.startPrank(renter2);
-        IERC20(paymentToken).approve(address(licenseProject2),10);
-        licenseProject2.rent(licenseTokenId2,block.timestamp,10);
-        require(licenseProject2.checkValidity(licenseTokenId2),"renter should have licensing rights");
+        IERC20(paymentToken).approve(address(licenseProject2), 10);
+        licenseProject2.buyLease(licenseTokenId2, RentalTimeUnit.Daily, block.timestamp, 10);
+        require(licenseProject2.checkValidity(licenseTokenId2), "renter should have licensing rights");
         vm.stopPrank();
 
         vm.startPrank(testAccount2);
@@ -118,4 +119,51 @@ contract RentableLicenseProjectTest is Test {
         vm.stopPrank();
     }
 
+    function testFailIfOverlappingLeases() public {
+        vm.startPrank(renter1);
+        licenseProject.buyLease{value: 0.4 ether}(licenseTokenId1, RentalTimeUnit.Daily, block.timestamp, 4);
+        vm.warp(block.timestamp + 2 days);        
+        licenseProject.checkValidity(licenseTokenId1);        
+        licenseProject.buyLease{value: 0.4 ether}(licenseTokenId1, RentalTimeUnit.Daily, block.timestamp, 4);
+        vm.stopPrank();
+    }
+
+    function testFailIfOverlappingLeasesInFuture() public {
+        vm.startPrank(renter1);
+        licenseProject.buyLease{value: 0.4 ether}(licenseTokenId1, RentalTimeUnit.Daily, block.timestamp + 4 days, 4);
+        licenseProject.buyLease{value: 0.4 ether}(licenseTokenId1, RentalTimeUnit.Daily, block.timestamp + 6 days, 4);
+        vm.stopPrank();
+    }
+
+    function testTokenTransferPreservesLeases() public {
+        vm.startPrank(renter1);
+        licenseProject.buyLease{value: 0.4 ether}(licenseTokenId1, RentalTimeUnit.Daily, block.timestamp, 4);
+        licenseProject.checkValidity(licenseTokenId1);
+        vm.stopPrank();
+        vm.prank(testAccount1);
+        licenseProject.transferFrom(testAccount1, testAccount2, licenseTokenId1);
+        vm.prank(renter1);
+        licenseProject.checkValidity(licenseTokenId1);
+    }
+
+    function testExtendLease() public {
+        vm.startPrank(renter1);
+        licenseProject.buyLease{value: 0.3 ether}(licenseTokenId1, RentalTimeUnit.Daily, block.timestamp, 3);
+        require(licenseProject.checkValidity(licenseTokenId1),"license valid after renting");
+        licenseProject.extendLease{value: 0.4 ether}(licenseTokenId1, RentalTimeUnit.Daily, 4);
+        vm.warp(block.timestamp + 5 days);
+        require(licenseProject.checkValidity(licenseTokenId1),"license valid after extending");
+        vm.stopPrank();
+    }
+
+    function testFailIfNonRenterExtendsLease() public {
+        vm.startPrank(renter1);
+        licenseProject.buyLease{value: 0.3 ether}(licenseTokenId1, RentalTimeUnit.Daily, block.timestamp, 3);
+        require(licenseProject.checkValidity(licenseTokenId1),"license valid after renting");
+        vm.stopPrank();
+        vm.startPrank(renter2);
+        licenseProject.extendLease{value: 0.4 ether}(licenseTokenId1, RentalTimeUnit.Daily, 4);
+        vm.stopPrank();
+    }
+    
 }

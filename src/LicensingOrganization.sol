@@ -3,12 +3,11 @@
 pragma solidity ^0.8.13;
 
 import "openzeppelin-contracts/access/Ownable.sol";
-import "./LicenseStructs.sol";
 import "./LicenseProject.sol";
 
 /// @notice this is an optional container for license projects
-///         multiple products can be associated with the same organization
-/// @dev    create project and register it with an organisation contract if needed
+/// multiple products can be associated with the same organization
+/// @dev create project and register it with an organisation contract if needed
 contract LicensingOrganisation is Ownable {
 
     string public name;
@@ -31,9 +30,5 @@ contract LicensingOrganisation is Ownable {
         }
         return stubs;
     }
-
-
-
-
 
 }

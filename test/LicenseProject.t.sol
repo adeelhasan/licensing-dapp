@@ -5,7 +5,6 @@ import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import "src/LicenseProject.sol";
 import "openzeppelin-contracts/token/ERC20/ERC20.sol";
-import "src/LicenseStructs.sol";
 
 /// @notice just a helper contract
 contract PaymentToken is ERC20 {
@@ -25,6 +24,8 @@ contract LicenseProjectTest is Test {
     address testAccount3;
     PaymentToken paymentToken;
 
+    event LicenseAdded(uint256 indexed licenseId);    
+
     function setUp() public {
         licenseProject = new LicenseProject("A Project","LPRO",address(0));
 
@@ -43,6 +44,10 @@ contract LicenseProjectTest is Test {
         paymentToken.transfer(testAccount3,1000);
     }
 
+    function compareStrings(string memory string1, string memory string2) public pure returns (bool) {
+        return keccak256(abi.encodePacked(string1)) == keccak256(abi.encodePacked(string2));
+    }
+
     function testPerpetualLicense() public {
         vm.deal(testAccount,10 ether);
         vm.startPrank(testAccount);
@@ -57,12 +62,12 @@ contract LicenseProjectTest is Test {
         vm.prank(testAccount);
         licenseProject.addLicense("license name",1,0,1 ether);
     }
-
     
-/*     function testExpectEmitAddLicenseEvent() public {
-        vm.expectEmit(false, false, false, false);
+    function testExpectEmitAddLicenseEvent() public {
+        vm.expectEmit(true, false, false, false);
+        emit LicenseAdded(2);
         licenseProject.addLicense("Evergreen Perpetual 2",1,0,1 ether);
-    } */
+    }
 
     function testPaymentByToken() public {
         vm.startPrank(testAccount3);
@@ -198,7 +203,7 @@ contract LicenseProjectTest is Test {
         License[] memory res;
         res = licenseProject4.allLicences();
         for(uint i; i < numOfLicenses; i++){
-            require(licenseProject4.getLicenseData(licenseIndexArr[i]).name == res[i].name, "License Name don't match");
+            require(compareStrings(licenseProject4.getLicenseData(licenseIndexArr[i]).name, res[i].name), "License Name don't match");
             require(licenseProject4.getLicenseData(licenseIndexArr[i]).maxRenewals == res[i].maxRenewals, "License maxCycles don't match");
             require(licenseProject4.getLicenseData(licenseIndexArr[i]).length == res[i].length, "License cycleLength don't match");
             require(licenseProject4.getLicenseData(licenseIndexArr[i]).price == res[i].price, "License price don't match");
@@ -219,12 +224,12 @@ contract LicenseProjectTest is Test {
         Licensee memory licensee1 = licenseProject.getLicenseeData(tokenId1);
         Licensee memory licensee2 = licenseProject.getLicenseeData(tokenId2);
 
-        require(license1.name == res[0].license.name, "License Name don't match");
+        require(compareStrings(license1.name, res[0].license.name), "License Name don't match");
         require(license1.maxRenewals == res[0].license.maxRenewals, "License maxCycles don't match");
         require(license1.length == res[0].license.length, "License cycleLength don't match");
         require(license1.price == res[0].license.price, "License price don't match");
         require(license1.status == res[0].license.status, "License active don't match");
-        require(license3.name == res[1].license.name, "License Name don't match");
+        require(compareStrings(license3.name, res[1].license.name), "License Name don't match");
         require(license3.maxRenewals == res[1].license.maxRenewals, "License maxCycles don't match");
         require(license3.length == res[1].license.length, "License cycleLength don't match");
         require(license3.price == res[1].license.price, "License price don't match");
@@ -244,7 +249,7 @@ contract LicenseProjectTest is Test {
         vm.startPrank(testAccount3);
         uint tokenToBeRented = licenseProject.buyLicense{value: 1 ether}(newlicenseId,0);
         require(licenseProject.checkValidity(tokenToBeRented),"expected licensee not there");
-        licenseProject.rentLicenseTo(tokenToBeRented,testAccount2);
+        licenseProject.assignLicenseTo(tokenToBeRented,testAccount2);
         vm.stopPrank();
         vm.prank(testAccount2);
         require(licenseProject.checkValidity(tokenToBeRented),"renter not licensee");
