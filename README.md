@@ -48,7 +48,7 @@ The check for a license is done via the following function on the LicenseProject
 ```solidity
 function checkValidity(uint tokenId) public virtual returns (bool)
 ```
-https://github.com/adeelhasan/licensing-dapp/blob/c066c9b0ed45508381614f9cd7af473c1e694430/src/LicenseProject.sol#L73
+[checkValidity](https://github.com/adeelhasan/licensing-dapp/blob/c066c9b0ed45508381614f9cd7af473c1e694430/src/LicenseProject.sol#L73)
 
 The context can guide how often the check should be called. Even if the license is current, the check will return false if called by an address which is neither the owner or the renter.
 
