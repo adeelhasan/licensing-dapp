@@ -35,6 +35,8 @@ Deploy a LicenseProject contract, and then call
     function addLicense(string memory name, uint256 maxRenewals, uint256 length, uint256 price) 
 ```
 
+
+
 to get a license id; this id is then referenced in a call to purchase the license, and at that point an NFT is minted:
 
 ```solidity
@@ -46,6 +48,7 @@ The check for a license is done via the following function on the LicenseProject
 ```solidity
 function checkValidity(uint tokenId) public virtual returns (bool)
 ```
+https://github.com/adeelhasan/licensing-dapp/blob/c066c9b0ed45508381614f9cd7af473c1e694430/src/LicenseProject.sol#L73
 
 The context can guide how often the check should be called. Even if the license is current, the check will return false if called by an address which is neither the owner or the renter.
 

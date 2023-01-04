@@ -259,8 +259,8 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
     function withdraw() external {
         uint256 wholeAmount = balances[msg.sender];
         require(wholeAmount > 0, "nothing to withdraw");
+        balances[msg.sender] = 0;
         if (paymentToken == address(0)) {
-            balances[msg.sender] = 0;
             (bool success,) = payable(msg.sender).call{value: wholeAmount}("");
             require(success, "unable to withdraw");
         }
