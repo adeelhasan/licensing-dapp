@@ -1,6 +1,10 @@
 # Decentralized Licensing 
 
-Software License NFTs are relatively straightforward, where token ownership validates a runtime check for DRM purposes. This project adds to that concept by having the option to specify an expiration date for the validity. This is more in line with how software subscription models work. Additionally, by grouping licenses under a LicensingProject contract, it is simpler to express various tiers of a product, both in terms of pricing as well as supported functionality. For example, there can be a limited free trial, a lifetime as well as hourly pricing, represented by different licenses. Finally, with the RentableLicenseProject, licensees have the option to rent out their license.
+Software License NFTs are relatively straightforward, where token ownership validates a runtime check for DRM purposes. This project adds to that concept by having the option to specify an expiration date for validity.
+
+This is more in line with how software subscription models work. Additionally, by grouping licenses under a LicensingProject contract, it is simpler to express various tiers of a product, both in terms of pricing as well as supported functionality.
+
+For example, there can be a limited free trial, a lifetime as well as hourly pricing, represented by different licenses. Finally, with the RentableLicenseProject, licensees have the option to rent out their license.
 
 <!-- Licensing can be thought of as an authenticity or validity check. For example, in the context of software licenses there can be a runtime test if the executable has been paid for. Or for content services, whether a subscription or membership is current or not. This project aims to provide a flexible mechanism for licensing, using the infrastructure of trust to provide more utility.
 
@@ -37,13 +41,13 @@ to get a license id; this id is then referenced in a call to purchase the licens
     function buyLicense(uint256 licenseId, uint256 startTime) 
 ```
 
-The check for a license is done via the following function on the LicenseProject contract:
+The check for a license is done via the following function on the LicenseProject or RentableLicenseProject contract:
 
 ```solidity
 function checkValidity(uint tokenId) public virtual returns (bool)
 ```
 
-The context can guide how often the check should be called. Also note that the RentableLicenseProject overrides this function, effectively the same interface is used for both contracts.
+The context can guide how often the check should be called. Even if the license is current, the check will return false if called by an address which is neither the owner or the renter.
 
 ## Rental
 
@@ -73,7 +77,7 @@ forge install foundry-rs/forge-std --no-commit
 then forge build and forge test.
 
 
-## Deployment on Local Chain:
+<!-- ## Deployment on Local Chain:
 
 - first start anvil in a separate console
 - fill in the .env file with the private keys listed for anvil
@@ -96,3 +100,4 @@ cd frontend
 npm install
 npm run dev
 ```
+ -->

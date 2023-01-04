@@ -180,8 +180,7 @@ contract LicenseProjectTest is Test {
         vm.prank(testAccount2);
         require(licenseProject.checkValidity(tokenId),"license was not transfered with the token");
         vm.startPrank(testAccount);
-        vm.expectRevert("valid for user of record only");
-        licenseProject.checkValidity(tokenId);
+        require(licenseProject.checkValidity(tokenId) == false, "not valid for non license holder");
         vm.stopPrank();
     }
 
@@ -247,18 +246,17 @@ contract LicenseProjectTest is Test {
         uint newlicenseId = licenseProject.addLicense("Simple Monthly",3,1 hours,1 ether);
         vm.deal(testAccount3, 10 ether);
         vm.startPrank(testAccount3);
-        uint tokenToBeRented = licenseProject.buyLicense{value: 1 ether}(newlicenseId,0);
-        require(licenseProject.checkValidity(tokenToBeRented),"expected licensee not there");
-        licenseProject.assignLicenseTo(tokenToBeRented,testAccount2);
+        uint newTokenId = licenseProject.buyLicense{value: 1 ether}(newlicenseId,0);
+        require(licenseProject.checkValidity(newTokenId),"expected licensee not there");
+        licenseProject.assignLicenseTo(newTokenId,testAccount2);
         vm.stopPrank();
         vm.prank(testAccount2);
-        require(licenseProject.checkValidity(tokenToBeRented),"renter not licensee");
+        require(licenseProject.checkValidity(newTokenId),"renter not licensee");
         vm.startPrank(testAccount3);
-        vm.expectRevert("valid for user of record only");
-        licenseProject.checkValidity(tokenToBeRented);
-        licenseProject.approve(testAccount, tokenToBeRented);
+        require(licenseProject.checkValidity(newTokenId) == false, "should not be valid");
+        licenseProject.approve(testAccount, newTokenId);
         vm.expectRevert("cannot transfer rented token");
-        licenseProject.transferFrom(testAccount3, testAccount, tokenToBeRented);
+        licenseProject.transferFrom(testAccount3, testAccount, newTokenId);
         vm.stopPrank();
     }
 

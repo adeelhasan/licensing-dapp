@@ -78,7 +78,6 @@ contract RentableLicenseProjectTest is Test {
         require(licenseProject.checkValidity(licenseTokenId1),"license valid after renting");
         vm.stopPrank();
 
-        vm.expectRevert("valid for user of record only");
         vm.prank(testAccount1);
         require(licenseProject.checkValidity(licenseTokenId1) == false,"owner should not have rights");
 
@@ -86,7 +85,6 @@ contract RentableLicenseProjectTest is Test {
         vm.warp(block.timestamp + 3 days);
         require(licenseProject.checkValidity(licenseTokenId1),"license not valid after a few days");
         vm.warp(block.timestamp + 2 days);
-        vm.expectRevert("valid for user of record only");
         require(licenseProject.checkValidity(licenseTokenId1) == false,"rental lease finished");
         vm.stopPrank();
 

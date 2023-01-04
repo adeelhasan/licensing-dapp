@@ -38,6 +38,20 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
         uint256 maxUnits
     );
 
+    event ListingUpdated(
+        uint256 indexed tokenId,
+        address indexed lister,
+        uint256 timeUnit,
+        uint256 pricePerUnit,
+        uint256 minUnits,
+        uint256 maxUnits
+    );
+
+    event ListingRemoved(
+        uint256 indexed tokenId,
+        uint256 timeUnit
+    );
+
     event LeaseStarted(
         uint256 indexed tokenId,
         address indexed renter,
@@ -52,10 +66,8 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
     /// @dev there is only one active lease at a time
     function checkValidity(uint256 tokenId) override public view returns(bool) {
         RentalLease memory lease = _getCurrentLease(tokenId);
-        if (lease.renter != address(0)) {
-            require(lease.renter == msg.sender,"valid for user of record only");
-            return true;
-        }
+        if (lease.renter != address(0))
+            return lease.renter == msg.sender;
         return super.checkValidity(tokenId);
     }
 
@@ -90,6 +102,45 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
         emit ListingAdded(tokenId, msg.sender, uint256(timeUnit), timeUnitPrice, minimumUnits, maximumUnits);
     }
 
+    /// @notice each time unit can have only one listing per token
+    function updateRentalListing(
+        uint256 tokenId,
+        RentalTimeUnit timeUnit,
+        uint256 timeUnitPrice,
+        uint256 minimumUnits,
+        uint256 maximumUnits
+    )
+        public 
+        returns(
+            bool updated
+        )
+    {
+        if (maximumUnits > 0)
+            require(maximumUnits >= minimumUnits, "inconsistent max and min units");
+        require(msg.sender == ownerOf(tokenId),"only token owner can list");
+
+        uint256 timeLength = timeUnitLengths[uint256(timeUnit)] * minimumUnits;
+        if ((timeLength > 0) && (licensees[tokenId].endTime > 0)) {
+            require(block.timestamp + timeLength <= licensees[tokenId].endTime, "listing will expire before minimum time");
+        }
+
+        uint256 count = listings[tokenId].length;
+        for (uint256 index; index < count; index++) {
+            if (listings[tokenId][index].timeUnit == timeUnit) {
+                listings[tokenId][index].pricePerTimeUnit = timeUnitPrice;
+                listings[tokenId][index].minimumUnits = minimumUnits;
+                listings[tokenId][index].maximumUnits = maximumUnits;
+
+                emit ListingAdded(tokenId, msg.sender, uint256(timeUnit), timeUnitPrice, minimumUnits, maximumUnits);
+
+                updated = true;
+                break;
+            }
+        }
+
+        return updated;
+    }
+
     function removeRentalListing(uint256 tokenId, RentalTimeUnit timeUnit) external {
         require(msg.sender == ownerOf(tokenId),"only for token owners");        
         uint256 count = listings[tokenId].length;
@@ -102,6 +153,8 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
                     listings[index] = listings[listings[index].length-1];
                     listings[tokenId].pop();                
                 }
+
+                emit ListingRemoved(tokenId, uint256(timeUnit));
             }
         }
     }
@@ -252,7 +305,7 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
             for (uint256 index; index < leasesCount; index++) {
                 lease = tokenLeases[index];
                 if (lease.renter != address(0)) {
-                    if (block.timestamp>=lease.startTime && block.timestamp<=lease.endTime) {
+                    if (block.timestamp >= lease.startTime && block.timestamp <= lease.endTime) {
                         return lease;
                     }
                 }

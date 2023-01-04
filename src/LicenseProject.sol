@@ -80,7 +80,8 @@ contract LicenseProject is ERC721Enumerable, Ownable {
         require(this.ownerOf(tokenId) != address(0),"token id has not been minted");
 
         Licensee memory licensee = licensees[tokenId];
-        require(licensee.user == msg.sender,"valid for user of record only");
+        if (licensee.user != msg.sender)
+            return false;
 
         bool durationCheck = (licensee.endTime == PERPETUAL ||
               (block.timestamp >= licensee.startTime && block.timestamp <= licensee.endTime));
@@ -202,8 +203,8 @@ contract LicenseProject is ERC721Enumerable, Ownable {
 
     /// @notice you can soft transfer / rent your license if its valid
     /// if the license expires while rented then the licensee/license is responsible
-    ///  for extending the duration rent collection is not addressed in this implementation
-    ///  @dev   by default the rental is always to the end of the current duration
+    /// for extending the duration rent collection is not addressed in this implementation
+    /// @dev by default the rental is always to the end of the current duration
     function assignLicenseTo(uint256 tokenId, address renter) external virtual {
         require(checkValidity(tokenId),"token is not valid");
         require(licensees[tokenId].user == ownerOf(tokenId),"token already rented out)");
@@ -234,6 +235,11 @@ contract LicenseProject is ERC721Enumerable, Ownable {
         return _filterLicenses(LicenseStatus.None);
     }
 
+    /// @notice sets the status, mainly for what would be shown in list of available to buy licenses
+    function setLicenseStatus(uint256 licenseId, LicenseStatus status) external onlyOwner() {
+        _licenses[licenseId].status = status;
+    }
+
     /// @notice a common spot to get the next token id
     function _getNewTokenId(address mintedTo) internal returns (uint) {
         _tokenIdCounter.increment();
@@ -243,8 +249,8 @@ contract LicenseProject is ERC721Enumerable, Ownable {
     }
 
     /// @notice common for billing
-    /// @dev    either ether is sent in exact amount, or pre-approved tokens are transferred
-    ///         if paymentToken was set then it's the default mode
+    /// @dev either ether is sent in exact amount, or pre-approved tokens are transferred
+    /// if paymentToken was set then it's the default mode
     function _collectPayment(uint256 price) internal {
         if (paymentToken == address(0)) {
             require(price == msg.value,"expected ether was not sent");
@@ -279,7 +285,11 @@ contract LicenseProject is ERC721Enumerable, Ownable {
         address to,
         uint256 firstTokenId,
         uint256 batchSize
-    ) internal override virtual {
+    ) 
+        internal
+        override
+        virtual
+    {
         require(batchSize == 1,"bulk transfers are not supported for licenses");
         super._afterTokenTransfer(from,to,firstTokenId,batchSize);
 
@@ -304,7 +314,9 @@ contract LicenseProject is ERC721Enumerable, Ownable {
         uint256 startTime, 
         uint256 length, 
         uint256 maxRenewals
-    ) private {
+    ) 
+        private
+    {
         Licensee memory licensee = licensees[tokenId];
         if (maxRenewals > 0)
             require(licensee.renewalsCount <= maxRenewals, "limit on renewals is reached");
@@ -349,8 +361,8 @@ contract LicenseProject is ERC721Enumerable, Ownable {
     function _checkValidity(uint256 tokenId, address user) internal view returns (bool) {
         Licensee memory licensee = licensees[tokenId];
         require (licensee.user != address(0),"not assigned or minted");
-        if ((user != address(0)))
-            require(licensee.user == user,"valid for user of record only");
+        if (user != address(0) && licensee.user != user)
+            return false;
         return (licensee.endTime == PERPETUAL ||
               (block.timestamp >= licensee.startTime && block.timestamp <= licensee.endTime));
     }
