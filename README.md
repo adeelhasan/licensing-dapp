@@ -41,13 +41,13 @@ The provider eg. a software vendor can setup a variety of licenses which are gro
 Deploy a LicenseProject contract, and then call 
 
 ```solidity
-    function addLicense(string memory name, uint256 maxRenewals, uint256 duration, uint256 price) 
+function addLicense(string memory name, uint256 maxRenewals, uint256 duration, uint256 price) 
 ```
 
 to get a license id; this id is then referenced in a call to purchase the license, and at that point an NFT is minted:
 
 ```solidity
-    function buyLicense(uint256 licenseId, uint256 startTime) 
+function buyLicense(uint256 licenseId, uint256 startTime) 
 ```
 
 The validity is checked via the following function:
