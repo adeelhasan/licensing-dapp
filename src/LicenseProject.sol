@@ -6,6 +6,7 @@ import "openzeppelin-contracts/utils/Counters.sol";
 import "openzeppelin-contracts/access/Ownable.sol";
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "./FundsCollector.sol";
 
 struct Licensee {
     address user;
@@ -43,7 +44,7 @@ struct LicenseProjectStub {
 /// one project for a software product, eg, and different licenses for
 /// different plans. users purchase licenses and have a licensee relationship
 /// @dev each licensee relationship is mapped to a ERC 721 token
-contract LicenseProject is ERC721Enumerable, Ownable {
+contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
 
     using Counters for Counters.Counter;
 
@@ -54,7 +55,6 @@ contract LicenseProject is ERC721Enumerable, Ownable {
     event LicenseRented(address indexed renter, uint256 tokentId);
     event LicenseAutoRenewed(address indexed liscensee , uint256 licenseId, uint256 tokensPaid);
 
-    address immutable public paymentToken;
     mapping(uint256 => Licensee) public licensees;
 
     uint256 constant private START_NOW = 0;
@@ -63,10 +63,9 @@ contract LicenseProject is ERC721Enumerable, Ownable {
     Counters.Counter private _tokenIdCounter;
     
     /// @notice setup the ERC 721 token
-    /// @param token_   the ERC20 token that is accepted as payment, or pass address(0) if the 
-    ///                 mode of payment is to be Ether. It has to be one or the other, not both
-    constructor(string memory name, string memory symbol, address token_) ERC721(name,symbol) {
-        paymentToken = token_;
+    /// @param token the ERC20 token that is accepted as payment, or pass address(0) if the 
+    /// mode of payment is to be Ether. It has to be one or the other, not both
+    constructor(string memory name, string memory symbol, address token) ERC721(name,symbol) FundsCollector(token) {
     }
 
     /// @notice the primary check for the licensee validity
@@ -141,7 +140,7 @@ contract LicenseProject is ERC721Enumerable, Ownable {
         require(licenseId < _licenses.length,"product id is not valid");
 
         License memory license = _licenses[licenseId];
-        _collectPayment(license.price);
+        _collectPayment(msg.sender, owner(), license.price);
         uint256 newTokenId = _getNewTokenId(msg.sender);        
         _addDuration(newTokenId, msg.sender, licenseId, startTime, license.duration, license.maxRenewals);
 
@@ -157,7 +156,7 @@ contract LicenseProject is ERC721Enumerable, Ownable {
 
         Licensee memory licensee = licensees[tokenId];
         License memory license = _licenses[licensee.licenseId];
-        _collectPayment(license.price);
+        _collectPayment(msg.sender, owner(), license.price);
         _addDuration(tokenId, msg.sender, licensee.licenseId, startTime, license.duration, license.maxRenewals);
     }
 
@@ -243,22 +242,6 @@ contract LicenseProject is ERC721Enumerable, Ownable {
         uint256 newTokenId = _tokenIdCounter.current();
         _safeMint(mintedTo, newTokenId);
         return newTokenId;
-    }
-
-    /// @notice common for billing
-    /// @dev either ether is sent in exact amount, or pre-approved tokens are transferred
-    /// if paymentToken was set then it's the default mode
-    function _collectPayment(uint256 price) internal {
-        if (paymentToken == address(0)) {
-            require(price == msg.value,"expected ether was not sent");
-        }
-        else {
-            require(msg.value == 0, "payment via tokens only, ether was sent too");
-            require(paymentToken != address(0), "token address not set");
-            
-            if (price > 0)
-                require(IERC20(paymentToken).transferFrom(msg.sender, address(this), price), "problem in token transfer");
-        }
     }
 
     /// @notice this is shared functionality for running a filter

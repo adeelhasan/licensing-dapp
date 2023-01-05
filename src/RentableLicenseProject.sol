@@ -5,6 +5,7 @@ pragma solidity ^0.8.13;
 import "forge-std/console.sol";
 import "./IERC4907.sol";
 import "./LicenseProject.sol";
+import "./FundsCollector.sol";
 
 enum RentalTimeUnit { Hourly, Daily, Weekly, Monthly, Annual }
 struct RentalListing {
@@ -25,7 +26,6 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
 
     mapping (uint256 => RentalListing[]) public listings;
     mapping (uint256 => RentalLease[]) public leases;
-    mapping (address => uint256) public balances;
 
     uint256[5] private timeUnitLengths = [3600,86400,604800,2592000,31536000];
 
@@ -202,8 +202,7 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
                        "overlaps an existing lease");
         }
 
-        _collectPayment(rentalPrice);
-        balances[ownerOf(tokenId)] += rentalPrice;
+        _collectPayment(msg.sender, ownerOf(tokenId), rentalPrice);
 
         leases[tokenId].push(RentalLease(msg.sender, rentalPrice, startTime, startTime + rentalTimeLength));
 
@@ -253,25 +252,6 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
             return lease.endTime;
         else
             return licensees[tokenId].endTime; //TBD what to do about the 0
-    }
-
-    /// @notice implements the withdraw pattern
-    function withdraw() external {
-        uint256 wholeAmount = balances[msg.sender];
-        require(wholeAmount > 0, "nothing to withdraw");
-        balances[msg.sender] = 0;
-        if (paymentToken == address(0)) {
-            (bool success,) = payable(msg.sender).call{value: wholeAmount}("");
-            require(success, "unable to withdraw");
-        }
-        else {
-            IERC20(paymentToken).transfer(msg.sender,wholeAmount);
-        }
-    }
-
-    /// @notice balance available to withdrawl pattern
-    function getBalance() external view returns(uint) {
-        return balances[msg.sender];
     }
 
     /// @notice get all leases for a token

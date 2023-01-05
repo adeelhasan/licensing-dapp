@@ -1,37 +1,23 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "forge-std/Test.sol";
-import "forge-std/console.sol";
-import "openzeppelin-contracts/token/ERC20/ERC20.sol";
+import "./LicensingTestBase.sol";
 import "src/RentableLicenseProject.sol";
 
-/// @notice just a helper contract
-contract PaymentToken is ERC20 {
-    constructor(string memory name, string memory symbol, uint initialSupply) ERC20(name,symbol) {
-        _mint(msg.sender,initialSupply);
-    }
-}
+contract RentableLicenseProjectTest is LicensingTestBase {
 
-contract RentableLicenseProjectTest is Test {
     RentableLicenseProject public licenseProject;
     RentableLicenseProject public licenseProject2;
-    uint licenseId1;
-    uint licenseId2;
-    uint licenseId3;
-    uint licenseTokenId1;
-    uint licenseTokenId2;
+
     uint listingId1;
     uint listingId2;
-    address testAccount1;
-    address testAccount2;
+
     address renter1;
     address renter2;
-    PaymentToken paymentToken;
 
+    function setUp() public override {
+        super.setUp();
 
-    function setUp() public {
-        paymentToken = new PaymentToken("SILVER","SLV", 1000000);
         licenseProject = new RentableLicenseProject("A Project With Rentables", "RPRO", address(0));
         licenseProject2 = new RentableLicenseProject("Rent with Tokens", "RPROT", address(paymentToken));
 
