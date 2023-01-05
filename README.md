@@ -1,10 +1,8 @@
 # Introduction
 
-Software License NFTs are relatively straightforward, where token ownership establishes a licensee relationship and validates a runtime DRM check. This project augments that concept by having the option to specify an expiration date. This is more in line with how software subscription models work.
+Software License NFTs are relatively straightforward, where token ownership establishes a licensee relationship and validates a runtime DRM check. This project augments that concept by having the option to specify an expiration date. This is more in line with how software subscription models work. Additionally, licensees have the option to rent out their license.
 
 A license can be thought of as a product or a product tier. By grouping licenses under a LicensingProject contract, it is simpler to express various tiers of a product, both in terms of pricing as well as supported functionality. For example, there can be a limited free trial, a lifetime as well as hourly pricing, represented by different licenses.
-
-Additionally, with the RentableLicenseProject, licensees have the option to rent out their license, more details below.
 
 Payments can be collected in ether/native currency as well as in tokens.
 
@@ -52,13 +50,13 @@ to get a license id; this id is then referenced in a call to purchase the licens
     function buyLicense(uint256 licenseId, uint256 startTime) 
 ```
 
-The check for a license is done via the following function on the LicenseProject or RentableLicenseProject contract:
+The validity is checked via the following function:
 
 ```solidity
 function checkValidity(uint tokenId) public virtual returns (bool)
 ```
 
-The context can guide how often the check should be called. Even if the license is current, the check will return false if called by an address which is neither the owner or the renter.
+The context can guide how often the check should be called. Even if the license is current, the check will return false if called by an address which is neither the owner nor the renter.
 
 ## Rental
 
