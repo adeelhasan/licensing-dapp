@@ -159,7 +159,7 @@ contract RentableLicenseProjectTest is Test {
         licenseProject.buyLease{value: 0.3 ether}(licenseTokenId1, RentalTimeUnit.Daily, block.timestamp, 3);
         require(licenseProject.checkValidity(licenseTokenId1),"license valid after renting");
         vm.stopPrank();
-        vm.startPrank(renter2);
+        vm.startPrank(renter1);
         licenseProject.extendLease{value: 0.4 ether}(licenseTokenId1, RentalTimeUnit.Daily, 4);
         vm.stopPrank();
     }

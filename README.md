@@ -26,6 +26,15 @@ The provider eg. a software vendor can setup a variety of licenses which are gro
     renting custom dates / custom period -- this can be from front end side too
     renting till the end of some time period
         this could stack the timeUnits, but that is an awkward thing to do
+
+    Payment and withdrawls
+        see if you can put this in your own utility contract
+    some more cleanup on ReadMe
+    License Ids -- this is a bit orthogonal, can skip
+    this.paymentToken() -- awkward, no?
+    
+
+
  -->
 ## Usage
 
@@ -34,8 +43,6 @@ Deploy a LicenseProject contract, and then call
 ```solidity
     function addLicense(string memory name, uint256 maxRenewals, uint256 length, uint256 price) 
 ```
-
-
 
 to get a license id; this id is then referenced in a call to purchase the license, and at that point an NFT is minted:
 
@@ -48,7 +55,6 @@ The check for a license is done via the following function on the LicenseProject
 ```solidity
 function checkValidity(uint tokenId) public virtual returns (bool)
 ```
-[checkValidity](https://github.com/adeelhasan/licensing-dapp/blob/c066c9b0ed45508381614f9cd7af473c1e694430/src/LicenseProject.sol#L73)
 
 The context can guide how often the check should be called. Even if the license is current, the check will return false if called by an address which is neither the owner or the renter.
 
