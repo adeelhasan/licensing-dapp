@@ -1,10 +1,12 @@
-# Decentralized Licensing 
+# Introduction
 
-Software License NFTs are relatively straightforward, where token ownership validates a runtime check for DRM purposes. This project adds to that concept by having the option to specify an expiration date for validity.
+Software License NFTs are relatively straightforward, where token ownership establishes a licensee relationship and validates a runtime DRM check. This project augments that concept by having the option to specify an expiration date. This is more in line with how software subscription models work.
 
-This is more in line with how software subscription models work. Additionally, by grouping licenses under a LicensingProject contract, it is simpler to express various tiers of a product, both in terms of pricing as well as supported functionality.
+A license can be thought of as a product or a product tier. By grouping licenses under a LicensingProject contract, it is simpler to express various tiers of a product, both in terms of pricing as well as supported functionality. For example, there can be a limited free trial, a lifetime as well as hourly pricing, represented by different licenses.
 
-For example, there can be a limited free trial, a lifetime as well as hourly pricing, represented by different licenses. Finally, with the RentableLicenseProject, licensees have the option to rent out their license.
+Additionally, with the RentableLicenseProject, licensees have the option to rent out their license, more details below.
+
+Payments can be collected in ether/native currency as well as in tokens.
 
 <!-- Licensing can be thought of as an authenticity or validity check. For example, in the context of software licenses there can be a runtime test if the executable has been paid for. Or for content services, whether a subscription or membership is current or not. This project aims to provide a flexible mechanism for licensing, using the infrastructure of trust to provide more utility.
 
@@ -32,7 +34,7 @@ The provider eg. a software vendor can setup a variety of licenses which are gro
     some more cleanup on ReadMe
     License Ids -- this is a bit orthogonal, can skip
     this.paymentToken() -- awkward, no?
-    
+
 
 
  -->
@@ -41,7 +43,7 @@ The provider eg. a software vendor can setup a variety of licenses which are gro
 Deploy a LicenseProject contract, and then call 
 
 ```solidity
-    function addLicense(string memory name, uint256 maxRenewals, uint256 length, uint256 price) 
+    function addLicense(string memory name, uint256 maxRenewals, uint256 duration, uint256 price) 
 ```
 
 to get a license id; this id is then referenced in a call to purchase the license, and at that point an NFT is minted:

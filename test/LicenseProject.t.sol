@@ -204,7 +204,7 @@ contract LicenseProjectTest is Test {
         for(uint i; i < numOfLicenses; i++){
             require(compareStrings(licenseProject4.getLicenseData(licenseIndexArr[i]).name, res[i].name), "License Name don't match");
             require(licenseProject4.getLicenseData(licenseIndexArr[i]).maxRenewals == res[i].maxRenewals, "License maxCycles don't match");
-            require(licenseProject4.getLicenseData(licenseIndexArr[i]).length == res[i].length, "License cycleLength don't match");
+            require(licenseProject4.getLicenseData(licenseIndexArr[i]).duration == res[i].duration, "License cycleLength don't match");
             require(licenseProject4.getLicenseData(licenseIndexArr[i]).price == res[i].price, "License price don't match");
             require(licenseProject4.getLicenseData(licenseIndexArr[i]).status == res[i].status, "License active don't match");
         }
@@ -225,12 +225,12 @@ contract LicenseProjectTest is Test {
 
         require(compareStrings(license1.name, res[0].license.name), "License Name don't match");
         require(license1.maxRenewals == res[0].license.maxRenewals, "License maxCycles don't match");
-        require(license1.length == res[0].license.length, "License cycleLength don't match");
+        require(license1.duration == res[0].license.duration, "License cycleLength don't match");
         require(license1.price == res[0].license.price, "License price don't match");
         require(license1.status == res[0].license.status, "License active don't match");
         require(compareStrings(license3.name, res[1].license.name), "License Name don't match");
         require(license3.maxRenewals == res[1].license.maxRenewals, "License maxCycles don't match");
-        require(license3.length == res[1].license.length, "License cycleLength don't match");
+        require(license3.duration == res[1].license.duration, "License cycleLength don't match");
         require(license3.price == res[1].license.price, "License price don't match");
         require(license3.status == res[1].license.status, "License active don't match");
 

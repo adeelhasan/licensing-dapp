@@ -20,7 +20,7 @@ enum LicenseStatus { None, Active, NotActive }
 struct License {
     string name;
     uint maxRenewals;
-    uint length;
+    uint duration;
     uint price;
     LicenseStatus status;
     bool allowRenting;
@@ -103,27 +103,24 @@ contract LicenseProject is ERC721Enumerable, Ownable {
     /// @notice add a license, restricted to the license project owner
     /// @param name name for the license, as it would appear in the UI
     /// @param maxRenewals a value of 0 would be for unlimited renewals
-    /// @param length of time, in seconds, for the validity period
+    /// @param duration of time, in seconds, for the validity period
     /// @param price interpreted as tokens or eth units, depending on the project setting
     function addLicense(
         string memory name, 
         uint256 maxRenewals, 
-        uint256 
-        length, 
+        uint256 duration, 
         uint256 price
     ) 
         external
         onlyOwner 
         returns(
-            uint256
+            uint256 licenseId
         )
     {
-        _licenses.push(License(name, maxRenewals, length, price, LicenseStatus.Active, false));
-        uint256 licenseId = _licenses.length-1;
+        _licenses.push(License(name, maxRenewals, duration, price, LicenseStatus.Active, false));
+        licenseId = _licenses.length-1;
 
         emit LicenseAdded(licenseId);
-        
-        return licenseId;
     }
 
     /// @notice for a user to purchase a license
@@ -146,7 +143,7 @@ contract LicenseProject is ERC721Enumerable, Ownable {
         License memory license = _licenses[licenseId];
         _collectPayment(license.price);
         uint256 newTokenId = _getNewTokenId(msg.sender);        
-        _addDuration(newTokenId, msg.sender, licenseId, startTime, license.length, license.maxRenewals);
+        _addDuration(newTokenId, msg.sender, licenseId, startTime, license.duration, license.maxRenewals);
 
         return newTokenId;
     }
@@ -161,7 +158,7 @@ contract LicenseProject is ERC721Enumerable, Ownable {
         Licensee memory licensee = licensees[tokenId];
         License memory license = _licenses[licensee.licenseId];
         _collectPayment(license.price);
-        _addDuration(tokenId, msg.sender, licensee.licenseId, startTime, license.length, license.maxRenewals);
+        _addDuration(tokenId, msg.sender, licensee.licenseId, startTime, license.duration, license.maxRenewals);
     }
 
     /// @notice a way to assign a license by the project admin, bypassing any purchasing flow
@@ -184,7 +181,7 @@ contract LicenseProject is ERC721Enumerable, Ownable {
 
         License memory license = _licenses[licenseId];
         uint256 newTokenId = _getNewTokenId(to);
-        _addDuration(newTokenId, to, licenseId, startTime, startTime + license.length, license.maxRenewals);
+        _addDuration(newTokenId, to, licenseId, startTime, startTime + license.duration, license.maxRenewals);
 
         emit LicenseGifted(to, newTokenId);
 
