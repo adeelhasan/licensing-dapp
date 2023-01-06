@@ -5,6 +5,12 @@ pragma solidity ^0.8.13;
 import "openzeppelin-contracts/access/Ownable.sol";
 import "./LicenseProject.sol";
 
+struct LicenseProjectInfo {
+    address contractAddress;
+    string name;
+    string symbol;
+}
+
 /// @notice this is an optional container for license projects
 /// multiple products can be associated with the same organization
 /// @dev create project and register it with an organisation contract if needed
@@ -22,13 +28,12 @@ contract LicensingOrganisation is Ownable {
         _projects.push(project);
     }
 
-    function projects() external view returns (LicenseProjectStub[] memory) {
+    function projects() external view returns (LicenseProjectInfo[] memory) {
         uint projectsCount = _projects.length;
-        LicenseProjectStub[] memory stubs = new LicenseProjectStub[](projectsCount);
+        LicenseProjectInfo[] memory projects_ = new LicenseProjectInfo[](projectsCount);
         for( uint i; i < projectsCount; i++) {
-            stubs[i] = LicenseProjectStub(address(_projects[i]),_projects[i].name(),_projects[i].symbol());
+            projects_[i] = LicenseProjectInfo(address(_projects[i]),_projects[i].name(),_projects[i].symbol());
         }
-        return stubs;
+        return projects_;
     }
-
 }

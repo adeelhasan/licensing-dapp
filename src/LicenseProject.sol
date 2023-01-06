@@ -33,12 +33,6 @@ struct LicenseeInfo {
     License license;
 }
 
-struct LicenseProjectStub {
-    address contractAddress;
-    string name;
-    string symbol;
-}
-
 /// @title License Project
 /// @notice container for licenses, and the licensees for those licenses
 /// one project for a software product, eg, and different licenses for
