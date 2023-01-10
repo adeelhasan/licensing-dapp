@@ -51,7 +51,7 @@ contract LicenseProjectTest is LicensingTestBase {
     
     function testExpectEmitAddLicenseEvent() public {
         vm.expectEmit(true, false, false, false);
-        emit LicenseAdded(2);
+        emit LicenseAdded(3);
         licenseProject.addLicense("Evergreen Perpetual 2", 1, 0, 1 ether);
     }
 
@@ -87,11 +87,11 @@ contract LicenseProjectTest is LicensingTestBase {
         vm.startPrank(testAccount3);
         paymentToken.approve(address(licenseProjectTakingTokens), 1000);
         licenseTokenId1 = licenseProjectTakingTokens.buyLicense(licenseId2, 0);
-        uint initialEndDate = licenseProjectTakingTokens.getLicenseeData(licenseTokenId1).endTime;
+        uint initialEndDate = licenseProjectTakingTokens.getLicensee(licenseTokenId1).endTime;
         vm.warp(block.timestamp + 100);
         licenseProjectTakingTokens.renewLicense(licenseTokenId1, 0);
         vm.stopPrank();
-        uint newEndDate = licenseProjectTakingTokens.getLicenseeData(licenseTokenId1).endTime;
+        uint newEndDate = licenseProjectTakingTokens.getLicensee(licenseTokenId1).endTime;
         assert(initialEndDate + 3600 == newEndDate);
     }
 
@@ -185,11 +185,11 @@ contract LicenseProjectTest is LicensingTestBase {
         License[] memory res;
         res = licenseProject4.allLicences();
         for(uint i; i < numOfLicenses; i++){
-            require(compareStrings(licenseProject4.getLicenseData(licenseIndexArr[i]).name, res[i].name), "License Name don't match");
-            require(licenseProject4.getLicenseData(licenseIndexArr[i]).maxRenewals == res[i].maxRenewals, "License maxCycles don't match");
-            require(licenseProject4.getLicenseData(licenseIndexArr[i]).duration == res[i].duration, "License cycleLength don't match");
-            require(licenseProject4.getLicenseData(licenseIndexArr[i]).price == res[i].price, "License price don't match");
-            require(licenseProject4.getLicenseData(licenseIndexArr[i]).status == res[i].status, "License active don't match");
+            require(compareStrings(licenseProject4.getLicense(licenseIndexArr[i]).name, res[i].name), "License Name don't match");
+            require(licenseProject4.getLicense(licenseIndexArr[i]).maxRenewals == res[i].maxRenewals, "License maxCycles don't match");
+            require(licenseProject4.getLicense(licenseIndexArr[i]).duration == res[i].duration, "License cycleLength don't match");
+            require(licenseProject4.getLicense(licenseIndexArr[i]).price == res[i].price, "License price don't match");
+            require(licenseProject4.getLicense(licenseIndexArr[i]).status == res[i].status, "License active don't match");
         }
     }
 
@@ -201,10 +201,10 @@ contract LicenseProjectTest is LicensingTestBase {
         LicenseeInfo[] memory res = licenseProject.myLicenses();
         require(res[0].tokenId == tokenId1, "Token Id don't match");
         require(res[1].tokenId == tokenId2, "Token Id don't match");
-        License memory license1 = licenseProject.getLicenseData(licenseId1);
-        License memory license3 = licenseProject.getLicenseData(licenseId3);
-        Licensee memory licensee1 = licenseProject.getLicenseeData(tokenId1);
-        Licensee memory licensee2 = licenseProject.getLicenseeData(tokenId2);
+        License memory license1 = licenseProject.getLicense(licenseId1);
+        License memory license3 = licenseProject.getLicense(licenseId3);
+        Licensee memory licensee1 = licenseProject.getLicensee(tokenId1);
+        Licensee memory licensee2 = licenseProject.getLicensee(tokenId2);
 
         require(compareStrings(license1.name, res[0].license.name), "License Name don't match");
         require(license1.maxRenewals == res[0].license.maxRenewals, "License maxCycles don't match");

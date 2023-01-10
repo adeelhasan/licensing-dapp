@@ -6,29 +6,28 @@ import "openzeppelin-contracts/utils/Counters.sol";
 import "openzeppelin-contracts/access/Ownable.sol";
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "./FundsCollector.sol";
+import "utility/FundsCollector.sol";
 
 struct Licensee {
     address user;
-    uint licenseId;
-    uint renewalsCount;
-    uint startTime;
-    uint endTime;
+    uint256 licenseId;
+    uint256 renewalsCount;
+    uint256 startTime;
+    uint256 endTime;
 }
 
 enum LicenseStatus { None, Active, NotActive }
 
 struct License {
     string name;
-    uint maxRenewals;
-    uint duration;
-    uint price;
+    uint256 maxRenewals;
+    uint256 duration;
+    uint256 price;
     LicenseStatus status;
-    bool allowRenting;
 }
 
 struct LicenseeInfo {
-    uint tokenId;
+    uint256 tokenId;
     Licensee licensee;
     License license;
 }
@@ -46,21 +45,30 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
     event LicenseBought(address indexed licensee, uint256 tokenId, uint256 licenseId);
     event LicenseRenewed(address indexed licensee, uint256 tokenId, uint256 licenseId);
     event LicenseGifted(address indexed licensee, uint256 tokenId);
-    event LicenseRented(address indexed renter, uint256 tokentId);
+    event LicenseAssignedTo(address indexed to, uint256 tokentId);
     event LicenseAutoRenewed(address indexed liscensee , uint256 licenseId, uint256 tokensPaid);
 
     mapping(uint256 => Licensee) public licensees;
+    mapping(uint256 => License) public licenses;
 
-    uint256 constant private START_NOW = 0;
-    uint256 constant private PERPETUAL = 0;
-    License[] private _licenses;
+    // for readability
+    uint256 constant internal START_NOW = 0;
+    uint256 constant internal PERPETUAL = 0;
+
     Counters.Counter private _tokenIdCounter;
+    Counters.Counter private _licenseIdCounter;
     
     /// @notice setup the ERC 721 token
     /// @param token the ERC20 token that is accepted as payment, or pass address(0) if the 
     /// mode of payment is to be Ether. It has to be one or the other, not both
-    constructor(string memory name, string memory symbol, address token) ERC721(name,symbol) FundsCollector(token) {
-    }
+    constructor(
+        string memory name,
+        string memory symbol,
+        address token
+    )
+        ERC721(name,symbol)
+        FundsCollector(token)
+    {}
 
     /// @notice the primary check for the licensee validity
     function checkValidity(uint256 tokenId) public view virtual returns(bool) {
@@ -82,12 +90,12 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
         if ((!durationCheck && this.paymentToken() != address(0)) &&
              (this.ownerOf(tokenId) == licensee.user) && 
              (IERC20(paymentToken).allowance(msg.sender,address(this)) >=
-                _licenses[licensee.licenseId].price)
+                licenses[licensee.licenseId].price)
         ) {
             renewLicense(tokenId, START_NOW);
             durationCheck = true;
 
-            emit LicenseAutoRenewed(msg.sender, licensee.licenseId, _licenses[licensee.licenseId].price);
+            emit LicenseAutoRenewed(msg.sender, licensee.licenseId, licenses[licensee.licenseId].price);
         }
         
         return durationCheck;
@@ -110,8 +118,9 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
             uint256 licenseId
         )
     {
-        _licenses.push(License(name, maxRenewals, duration, price, LicenseStatus.Active, false));
-        licenseId = _licenses.length-1;
+        _licenseIdCounter.increment();
+        licenseId = _licenseIdCounter.current();
+        licenses[licenseId] = License(name, maxRenewals, duration, price, LicenseStatus.Active);
 
         emit LicenseAdded(licenseId);
     }
@@ -131,9 +140,9 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
         )
     {
         require(startTime == START_NOW || startTime > block.timestamp,"startTime is not correct");
-        require(licenseId < _licenses.length,"product id is not valid");
+        License memory license = licenses[licenseId];
+        require(license.status != LicenseStatus.None, "license not valid");
 
-        License memory license = _licenses[licenseId];
         _collectPayment(msg.sender, owner(), license.price);
         uint256 newTokenId = _getNewTokenId(msg.sender);        
         _addDuration(newTokenId, msg.sender, licenseId, startTime, license.duration, license.maxRenewals);
@@ -149,7 +158,7 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
         require(startTime == START_NOW || startTime > block.timestamp,"startTime is not correct");
 
         Licensee memory licensee = licensees[tokenId];
-        License memory license = _licenses[licensee.licenseId];
+        License memory license = licenses[licensee.licenseId];
         _collectPayment(msg.sender, owner(), license.price);
         _addDuration(tokenId, msg.sender, licensee.licenseId, startTime, license.duration, license.maxRenewals);
     }
@@ -170,9 +179,9 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
         )
     {
         require(startTime == START_NOW || startTime > block.timestamp);
-        require(licenseId < _licenses.length,"product id is not valid");
+        License memory license = licenses[licenseId];
+        require(license.status != LicenseStatus.None, "license not valid");
 
-        License memory license = _licenses[licenseId];
         uint256 newTokenId = _getNewTokenId(to);
         _addDuration(newTokenId, to, licenseId, startTime, startTime + license.duration, license.maxRenewals);
 
@@ -182,35 +191,35 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
     }
 
     /// @notice return licensee data, mainly for frontend consumption
-    function getLicenseeData(uint256 tokenId) external view returns(Licensee memory) {
+    function getLicensee(uint256 tokenId) external view returns(Licensee memory) {
         return licensees[tokenId];
     }
 
     /// @notice return licensee data, mainly for frontend consumption
-    function getLicenseData(uint256 licenseIndex) external view returns(License memory) {
-        return _licenses[licenseIndex];
+    function getLicense(uint256 licenseId) external view returns(License memory) {
+        return licenses[licenseId];
     }
 
-    /// @notice you can soft transfer / rent your license if its valid
-    /// if the license expires while rented then the licensee/license is responsible
-    /// for extending the duration rent collection is not addressed in this implementation
-    /// @dev by default the rental is always to the end of the current duration
-    function assignLicenseTo(uint256 tokenId, address renter) external virtual {
+    /// @notice you can soft transfer your license if its valid
+    /// @dev by default the re-assignment is always to the end of the current duration
+    /// for renting, see the RentableLicenseProject; in theory if you get payment for 
+    /// assigning the licensee relationship, then that is renting. but here the payment is not stipulated
+    function assignLicenseTo(uint256 tokenId, address to) external virtual {
         require(checkValidity(tokenId),"token is not valid");
-        require(licensees[tokenId].user == ownerOf(tokenId),"token already rented out)");
+        require(licensees[tokenId].user == ownerOf(tokenId),"token already re-assigned)");
 
-        licensees[tokenId].user = renter;
+        licensees[tokenId].user = to;
         
-        emit LicenseRented(renter, tokenId);
+        emit LicenseAssignedTo(to, tokenId);
     }
 
     /// @notice all licensee relationships for msg.sender
     function myLicenses() external view returns(LicenseeInfo[] memory) {
         uint256 count = balanceOf(msg.sender);
         LicenseeInfo[] memory result = new LicenseeInfo[](count);
-        for (uint256 i; i<count; i++) {
+        for (uint256 i; i < count; i++) {
             uint256 tokenId = tokenOfOwnerByIndex(msg.sender,i);
-            result[i] = LicenseeInfo(tokenId,licensees[tokenId], _licenses[licensees[tokenId].licenseId]);
+            result[i] = LicenseeInfo(tokenId, licensees[tokenId], licenses[licensees[tokenId].licenseId]);
         }
         return result;
     }
@@ -227,7 +236,9 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
 
     /// @notice sets the status, mainly for what would be shown in list of available to buy licenses
     function setLicenseStatus(uint256 licenseId, LicenseStatus status) external onlyOwner() {
-        _licenses[licenseId].status = status;
+        License memory license = licenses[licenseId];
+        require(license.status != LicenseStatus.None, "license not valid");
+        licenses[licenseId].status = status;
     }
 
     /// @notice a common spot to get the next token id
@@ -240,14 +251,14 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
 
     /// @notice this is shared functionality for running a filter
     function _filterLicenses(LicenseStatus status) internal view returns (License[] memory) {
-        uint256 count = _licenses.length;
+        uint256 count = _licenseIdCounter.current();
         License[] memory result = new License[](count);
-        for (uint256 i; i<_licenses.length; i++) {
+        for (uint256 i = 1; i <= count; i++) {
             if (status == LicenseStatus.None)
-                result[i] = _licenses[i];
+                result[i-1] = licenses[i];
             else
-                if (status == _licenses[i].status)
-                    result[i] = _licenses[i];
+                if (status == licenses[i].status)
+                    result[i-1] = licenses[i];
         }
         return result;
     }
@@ -272,6 +283,16 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
             require(licensees[firstTokenId].user == from,"cannot transfer rented token");
             licensees[firstTokenId].user = to;
         }
+    }
+
+    /// @dev common code for validity check
+    function _checkValidity(uint256 tokenId, address user) internal view returns (bool) {
+        Licensee memory licensee = licensees[tokenId];
+        require (licensee.user != address(0),"not assigned or minted");
+        if (user != address(0) && licensee.user != user)
+            return false;
+        return (licensee.endTime == PERPETUAL ||
+              (block.timestamp >= licensee.startTime && block.timestamp <= licensee.endTime));
     }
 
     /// @notice creates or extends the licensee relationship
@@ -331,16 +352,6 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
         }
     }
 
-    /// @dev common code for validity check
-    function _checkValidity(uint256 tokenId, address user) internal view returns (bool) {
-        Licensee memory licensee = licensees[tokenId];
-        require (licensee.user != address(0),"not assigned or minted");
-        if (user != address(0) && licensee.user != user)
-            return false;
-        return (licensee.endTime == PERPETUAL ||
-              (block.timestamp >= licensee.startTime && block.timestamp <= licensee.endTime));
-    }
-    
 }
 
 

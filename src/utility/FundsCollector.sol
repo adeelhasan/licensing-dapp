@@ -20,16 +20,18 @@ abstract contract FundsCollector {
     /// @notice implements the withdraw pattern
     function withdraw() external {
         uint256 wholeAmount = balances[msg.sender];
-        require(wholeAmount > 0, "nothing to withdraw");
-        balances[msg.sender] = 0;
-        if (paymentToken == address(0)) {
-            (bool success,) = payable(msg.sender).call{value: wholeAmount}("");
-            require(success, "unable to withdraw");
-        }
-        else
-            IERC20(paymentToken).transfer(msg.sender,wholeAmount);
+        //require(wholeAmount > 0, "nothing to withdraw");
+        if (wholeAmount > 0) {
+            balances[msg.sender] = 0;
+            if (paymentToken == address(0)) {
+                (bool success,) = payable(msg.sender).call{value: wholeAmount}("");
+                require(success, "unable to withdraw");
+            }
+            else
+                IERC20(paymentToken).transfer(msg.sender,wholeAmount);
 
-        emit FundsWithdrawn(msg.sender, wholeAmount);
+            emit FundsWithdrawn(msg.sender, wholeAmount);
+        }
     }
 
     /// @notice balance available to withdrawl pattern
@@ -44,8 +46,10 @@ abstract contract FundsCollector {
             //require(price == msg.value,"expected ether was not sent");
             if (msg.value < amount)
                 revert("not enough ether was sent");
-            balances[to] += amount;
-            emit FundsReceived(from, to, amount);
+            if (to != address(0)) {
+                balances[to] += amount;
+                emit FundsReceived(from, to, amount);
+            }
             if (msg.value > amount) {
                 balances[from] += msg.value - amount;
                 emit RefundAvailable(from, msg.value - amount);
@@ -57,7 +61,8 @@ abstract contract FundsCollector {
             
             //tokens are held in the contract till withdraw time, so that there is a uniform interface for interaction
             require(IERC20(paymentToken).transferFrom(from, address(this), amount), "problem in token transfer");
-            balances[to] += amount;
+            if (to != address(0))
+                balances[to] += amount;
         }
     }
 }

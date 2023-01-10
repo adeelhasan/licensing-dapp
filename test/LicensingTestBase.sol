@@ -27,7 +27,7 @@ contract LicensingTestBase is Test {
     PaymentToken paymentToken;
 
     function setUp() public virtual {
-        paymentToken = new PaymentToken("SILVER","SLV",1000000);
+        paymentToken = new PaymentToken("SILVER","SLV",UINT256_MAX);
     }
 
 }

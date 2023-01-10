@@ -1,6 +1,6 @@
 # Introduction
 
-Software License NFTs are relatively straightforward, where token ownership establishes a licensee relationship and validates a runtime DRM check. This project augments that concept by having the option to specify an expiration date. This is more in line with how software subscription models work. Additionally, licensees have the option to rent out their license.
+Software License NFTs are relatively straightforward, where token ownership establishes a licensee relationship and validates a runtime DRM check. This project augments that concept by having the option to specify an expiration date. This is more in line with how software subscription models work. Additionally, licensees can rent out their license, with a pay-as-you-go / streaming option .
 
 A license can be thought of as a product or a product tier. By grouping licenses under a LicensingProject contract, it is simpler to express various tiers of a product, both in terms of pricing as well as supported functionality. For example, there can be a limited free trial, a lifetime as well as hourly pricing, represented by different licenses.
 
@@ -38,13 +38,13 @@ The provider eg. a software vendor can setup a variety of licenses which are gro
  -->
 ## Usage
 
-Deploy a LicenseProject contract, and then call 
+If you need time based licenses, then the LicenseProject contract will be sufficient. If the ability for licensees to rent out their license will be needed, then the RentableLicenseProject (which descends from LicenseProject) should be used. In both cases, use the following to first add a license:
 
 ```solidity
-function addLicense(string memory name, uint256 maxRenewals, uint256 duration, uint256 price) 
+function addLicense(string memory name, uint256 maxRenewals, uint256 duration, uint256 price) returns (uint256 licenseId)
 ```
 
-to get a license id; this id is then referenced in a call to purchase the license, and at that point an NFT is minted:
+the license id returned is then referenced in a call to purchase the license, and at that point an NFT is minted:
 
 ```solidity
 function buyLicense(uint256 licenseId, uint256 startTime) 
@@ -60,13 +60,32 @@ The context can guide how often the check should be called. Even if the license 
 
 ## Rental
 
-The RentableLicenseProject contract is elaborated for renting out a license. It can be thought of as a reservation system for the duration of license validity. The end user will buy a lease, based on a listing created by the license / token holder. The listing specifies the rate for a block of time called a RentalTimeUnit. These are hourly, daily, weekly monthly or annual.
+The RentableLicenseProject contract is elaborated for renting out a license. It can be thought of as a reservation system for the duration of license validity. The end user will buy a lease, based on a listing created by the license / token holder. The listing specifies the rate for a block of time called a RentalTimeUnit. 
+
+```solidity
+enum RentalTimeUnit { Seconds, Minutes, Hourly, Daily, Weekly, Monthly, Annual }
+```
 
 So eg, you can create a listing which lays out a daily rental rate. You can also pick a minimum or maximum number of rental units that need to be bought to start a lease. So eg, you can have an hourly rate, but restrict the user to at least 1 hour or at most 12 hours. At the same time, the same license can have a monthly rate quoted. At the moment there is no support for arbitrary start and end dates for a lease.
 
 Each license can have a single listing per RentalTimeUnit. Eg, you cannot have two hourly rates quoted for the same license.
 
 Leases cannot overlap, eg. if the 15th of April is rented out from 12 pm to 10 pm, then a month long lease from the 10th of April to the 10th of May won't be given.
+
+```solidity
+    function addRentalListing(
+        uint256 tokenId,
+        RentalTimeUnit timeUnit,
+        uint256 timeUnitPrice,
+        uint256 minimumUnits,
+        uint256 maximumUnits,
+        bool allowStreaming
+    )
+        public
+        returns (uint256 listingId)     
+```
+
+The listing
 
 
 

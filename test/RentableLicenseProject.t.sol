@@ -37,20 +37,20 @@ contract RentableLicenseProjectTest is LicensingTestBase {
         vm.deal(renter1, 5 ether);
         vm.deal(renter2, 5 ether);
 
-        paymentToken.transfer(testAccount2, 1000);
+        paymentToken.transfer(testAccount2, 1000 * 7 days);
         paymentToken.transfer(renter2, 1000);
 
         vm.startPrank(testAccount1);
 
         licenseTokenId1 = licenseProject.buyLicense{value: 1 ether}(licenseId1, 0);
-        licenseProject.addRentalListing(licenseTokenId1, RentalTimeUnit.Daily, 0.1 ether, 3, 0);
+        listingId1 = licenseProject.addRentalListing(licenseTokenId1, RentalTimeUnit.Daily, 0.1 ether, 3, 0, false);
 
         vm.stopPrank();
 
         vm.startPrank(testAccount2);
         paymentToken.approve(address(licenseProject2), 1000);
         licenseTokenId2 = licenseProject2.buyLicense(licenseId3, 0);
-        licenseProject2.addRentalListing(licenseTokenId2, RentalTimeUnit.Daily, 1, 10, 0);
+        listingId2 = licenseProject2.addRentalListing(licenseTokenId2, RentalTimeUnit.Daily, 1, 10, 0, false);
         vm.stopPrank();
 
     }
@@ -60,7 +60,7 @@ contract RentableLicenseProjectTest is LicensingTestBase {
         require(licenseProject.checkValidity(licenseTokenId1),"license is good for owner");
 
         vm.startPrank(renter1);
-        licenseProject.buyLease{value: 0.4 ether}(licenseTokenId1, RentalTimeUnit.Daily, block.timestamp, 4);
+        licenseProject.buyLease{value: 0.4 ether}(licenseTokenId1, listingId1, block.timestamp, 4, false);
         require(licenseProject.checkValidity(licenseTokenId1),"license valid after renting");
         vm.stopPrank();
 
@@ -81,17 +81,17 @@ contract RentableLicenseProjectTest is LicensingTestBase {
     }
 
     function testFailIfRentingLessThanRequiredMinimum() public {
-        licenseProject.buyLease{value: 0.4 ether}(licenseTokenId1, RentalTimeUnit.Daily, block.timestamp,2);
+        licenseProject.buyLease{value: 0.4 ether}(licenseTokenId1, listingId1, block.timestamp, 2, false);
     }
 
     function testFailIfRentingWithLessEther() public {
-        licenseProject.buyLease{value: 0.3 ether}(licenseTokenId1, RentalTimeUnit.Daily, block.timestamp, 4);
+        licenseProject.buyLease{value: 0.3 ether}(licenseTokenId1, listingId1, block.timestamp, 4, false);
     }
 
     function testRentingWithToken() public {
         vm.startPrank(renter2);
         IERC20(paymentToken).approve(address(licenseProject2), 10);
-        licenseProject2.buyLease(licenseTokenId2, RentalTimeUnit.Daily, block.timestamp, 10);
+        licenseProject2.buyLease(licenseTokenId2, listingId1, block.timestamp, 10, false);
         require(licenseProject2.checkValidity(licenseTokenId2), "renter should have licensing rights");
         vm.stopPrank();
 
@@ -105,23 +105,23 @@ contract RentableLicenseProjectTest is LicensingTestBase {
 
     function testFailIfOverlappingLeases() public {
         vm.startPrank(renter1);
-        licenseProject.buyLease{value: 0.4 ether}(licenseTokenId1, RentalTimeUnit.Daily, block.timestamp, 4);
+        licenseProject.buyLease{value: 0.4 ether}(licenseTokenId1, listingId1, block.timestamp, 4, false);
         vm.warp(block.timestamp + 2 days);        
         licenseProject.checkValidity(licenseTokenId1);        
-        licenseProject.buyLease{value: 0.4 ether}(licenseTokenId1, RentalTimeUnit.Daily, block.timestamp, 4);
+        licenseProject.buyLease{value: 0.4 ether}(licenseTokenId1, listingId1, block.timestamp, 4, false);
         vm.stopPrank();
     }
 
     function testFailIfOverlappingLeasesInFuture() public {
         vm.startPrank(renter1);
-        licenseProject.buyLease{value: 0.4 ether}(licenseTokenId1, RentalTimeUnit.Daily, block.timestamp + 4 days, 4);
-        licenseProject.buyLease{value: 0.4 ether}(licenseTokenId1, RentalTimeUnit.Daily, block.timestamp + 6 days, 4);
+        licenseProject.buyLease{value: 0.4 ether}(licenseTokenId1, listingId1, block.timestamp + 4 days, 4, false);
+        licenseProject.buyLease{value: 0.4 ether}(licenseTokenId1, listingId1, block.timestamp + 6 days, 4, false);
         vm.stopPrank();
     }
 
     function testTokenTransferPreservesLeases() public {
         vm.startPrank(renter1);
-        licenseProject.buyLease{value: 0.4 ether}(licenseTokenId1, RentalTimeUnit.Daily, block.timestamp, 4);
+        licenseProject.buyLease{value: 0.4 ether}(licenseTokenId1, listingId1, block.timestamp, 4, false);
         licenseProject.checkValidity(licenseTokenId1);
         vm.stopPrank();
         vm.prank(testAccount1);
@@ -132,9 +132,9 @@ contract RentableLicenseProjectTest is LicensingTestBase {
 
     function testExtendLease() public {
         vm.startPrank(renter1);
-        licenseProject.buyLease{value: 0.3 ether}(licenseTokenId1, RentalTimeUnit.Daily, block.timestamp, 3);
+        licenseProject.buyLease{value: 0.3 ether}(licenseTokenId1, listingId1, block.timestamp, 3, false);
         require(licenseProject.checkValidity(licenseTokenId1),"license valid after renting");
-        licenseProject.extendLease{value: 0.4 ether}(licenseTokenId1, RentalTimeUnit.Daily, 4);
+        licenseProject.extendLease{value: 0.4 ether}(licenseTokenId1, listingId1, 4);
         vm.warp(block.timestamp + 5 days);
         require(licenseProject.checkValidity(licenseTokenId1),"license valid after extending");
         vm.stopPrank();
@@ -142,12 +142,117 @@ contract RentableLicenseProjectTest is LicensingTestBase {
 
     function testFailIfNonRenterExtendsLease() public {
         vm.startPrank(renter1);
-        licenseProject.buyLease{value: 0.3 ether}(licenseTokenId1, RentalTimeUnit.Daily, block.timestamp, 3);
+        licenseProject.buyLease{value: 0.3 ether}(licenseTokenId1, listingId1, block.timestamp, 3, false);
         require(licenseProject.checkValidity(licenseTokenId1),"license valid after renting");
         vm.stopPrank();
         vm.startPrank(renter2);
-        licenseProject.extendLease{value: 0.4 ether}(licenseTokenId1, RentalTimeUnit.Daily, 4);
+        licenseProject.extendLease{value: 0.4 ether}(licenseTokenId1, listingId1, 4);
         vm.stopPrank();
     }
-    
+
+    function testStreamingLeaseEndedByRenter() public {
+        vm.prank(testAccount1);
+        uint256 streamableListingId = licenseProject.addRentalListing(licenseTokenId1, RentalTimeUnit.Seconds, 1000, 1 days, 0, true);
+
+        vm.startPrank(testAccount2);
+        uint256 streamingLeaseId = licenseProject.buyLease{value: (3 days * 1000)}(licenseTokenId1, streamableListingId, block.timestamp + 2 days, 3 days, true);
+
+        uint256 balanceBefore = testAccount2.balance;
+        vm.warp(block.timestamp + 3 days);
+        licenseProject.endStreamingLease(licenseTokenId1, streamingLeaseId);
+        licenseProject.withdraw();
+        uint256 balanceAfter = testAccount2.balance;
+        vm.stopPrank();
+
+        //stream was for 3 days, canceling after 1 day, so refunded for 2 days
+        require(2 days * 1000 == (balanceAfter - balanceBefore), "renter balance not as expected");
+
+        //the token holder would get the 1 day of rent that was used by the stream
+        balanceBefore = testAccount1.balance;
+        vm.prank(testAccount1);
+        licenseProject.withdraw();
+        balanceAfter = testAccount1.balance;
+        require(1 days * 1000 == (balanceAfter - balanceBefore), "token holder balance not as expected");
+    }
+
+    function testStreamingLeaseEndedByRenterBeforeStart() public {
+        vm.prank(testAccount1);
+        uint256 streamableListingId = licenseProject.addRentalListing(licenseTokenId1, RentalTimeUnit.Seconds, 1000, 1 days, 0, true);
+
+        vm.startPrank(testAccount2);
+        uint256 streamingLeaseId = licenseProject.buyLease{value: (3 days * 1000)}(licenseTokenId1, streamableListingId, block.timestamp + 2 days, 3 days, true);
+
+        uint256 balanceBefore = testAccount2.balance;
+        vm.warp(block.timestamp + 1 days);
+        licenseProject.endStreamingLease(licenseTokenId1, streamingLeaseId);
+        licenseProject.withdraw();
+        uint256 balanceAfter = testAccount2.balance;
+        vm.stopPrank();
+
+        //stream was for 3 days, so refunded for all the days when canceling before its start
+        require(3 days * 1000 == (balanceAfter - balanceBefore), "renter balance not as expected");
+
+        //the token holder would get the 1 day of rent that was used by the stream
+        balanceBefore = testAccount1.balance;
+        vm.prank(testAccount1);
+        licenseProject.withdraw();
+        balanceAfter = testAccount1.balance;
+        require(0 == (balanceAfter - balanceBefore), "token holder balance not as expected");
+    }
+
+    function testStreamingLeaseAfterEndDate() public {
+        vm.prank(testAccount1);
+        uint256 streamableListingId = licenseProject.addRentalListing(licenseTokenId1, RentalTimeUnit.Seconds, 1000, 1 days, 0, true);
+
+        uint256 tokenHolderbalanceBefore = testAccount1.balance;
+
+        vm.startPrank(testAccount2);
+        uint256 streamingLeaseId = licenseProject.buyLease{value: (3 days * 1000)}(licenseTokenId1, streamableListingId, block.timestamp + 2 days, 3 days, true);
+
+        uint256 balanceBefore = testAccount2.balance;
+        vm.warp(block.timestamp + 5 days);
+        vm.expectRevert("can only cancel before endTime");
+        licenseProject.endStreamingLease(licenseTokenId1, streamingLeaseId);
+        licenseProject.withdraw();
+        uint256 balanceAfter = testAccount2.balance;
+        vm.stopPrank();
+
+        //full rent is taken in this scenario
+        require(balanceAfter == balanceBefore, "renter balance not as expected");
+
+        //the token holder would get full rent
+        vm.startPrank(testAccount1);
+        licenseProject.getRentFromStreamingLease(licenseTokenId1, streamingLeaseId);
+        licenseProject.withdraw();
+        vm.stopPrank();
+        balanceAfter = testAccount1.balance;
+        require((3 days * 1000) == (balanceAfter - tokenHolderbalanceBefore), "token holder balance not as expected");
+    }
+
+    function testStreamingLeaseByTokens() public {
+        vm.prank(testAccount2); //token owner
+        uint256 streamableListingId = licenseProject2.addRentalListing(licenseTokenId2, RentalTimeUnit.Seconds, 1000, 1 days, 0, true);
+
+        paymentToken.transfer(testAccount1, 3 days * 1000);
+        vm.startPrank(testAccount1);
+        paymentToken.approve(address(licenseProject2), 1000 * 3 days);        
+        uint256 streamingLeaseId = licenseProject2.buyLease(licenseTokenId2, streamableListingId, block.timestamp + 2 days, 3 days, true);
+
+        uint256 balanceBefore = paymentToken.balanceOf(testAccount1);
+        vm.warp(block.timestamp + 3 days);
+        licenseProject2.endStreamingLease(licenseTokenId2, streamingLeaseId);
+        licenseProject2.withdraw();
+        uint256 balanceAfter = paymentToken.balanceOf(testAccount1);
+        vm.stopPrank();
+
+        //stream was for 3 days, canceling after 1 day, so refunded for 2 days
+        require(2 days * 1000 == (balanceAfter - balanceBefore), "renter balance not as expected");
+
+        //the token holder would get the 1 day of rent that was used by the stream
+        balanceBefore = paymentToken.balanceOf(testAccount2);
+        vm.prank(testAccount2);
+        licenseProject2.withdraw();
+        balanceAfter = paymentToken.balanceOf(testAccount2);
+        require(1 days * 1000 == (balanceAfter - balanceBefore), "token holder balance not as expected");
+    }
 }
