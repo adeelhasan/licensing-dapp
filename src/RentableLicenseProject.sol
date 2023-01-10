@@ -139,7 +139,6 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
         emit ListingAdded(tokenId, msg.sender, uint256(timeUnit), timeUnitPrice, minimumUnits, maximumUnits);
     }
 
-    /// @notice each time unit can have only one listing per token
     function updateRentalListing(
         uint256 tokenId,
         uint256 listingId,
@@ -268,8 +267,9 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
         buyLease(tokenId, listingId, startTime, timeUnitsCount, false);
     }
 
-    // lease cannot be identified if its not current --- we need a lease id
-    // probably a lease id as well
+    /// @notice this lets a renter exit a streaming lease
+    /// @param tokenId the nft token id
+    /// @param leaseId the rental lease id
     function endStreamingLease(uint256 tokenId, uint256 leaseId) public {
         RentalLease memory lease = leases[tokenId][leaseId];
         require(lease.renter == msg.sender, "only the leasee can end the lease");
@@ -278,16 +278,15 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
         require(sli.ratePerSecond > 0, "streaming not valid");
         require(!sli.ended, "streaming already finished");
 
+        //before the start, refund whole amount back to renter
         if (lease.startTime > block.timestamp) {
-            //can be before the start, refund what has been deposited back to the renter
             balances[lease.renter] += lease.rentPaid;
         }
 
+        //stream is active, refund according to the time period used
         if ((block.timestamp > lease.startTime) && (block.timestamp < lease.endTime)) {
-            //mark for refund what has not been used up so far
             uint256 timeRemaining = lease.endTime - block.timestamp;
             balances[lease.renter] += (timeRemaining * sli.ratePerSecond);
-            console.log("when ending the streaming %s",timeRemaining * sli.ratePerSecond);
             balances[ownerOf(tokenId)] = ((block.timestamp - lease.startTime) * sli.ratePerSecond) - sli.balanceAlreadyPaid;
         }
 
@@ -322,6 +321,13 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
     /// @notice IERC4907 support - this can effectively start a lease
     function setUser(uint256 tokenId, address user, uint64 expires) external override {
         //should start a new lease, and revert if there is a current one in this time period
+        for (uint256 index; index < leaseIdsByToken[tokenId].length; index++) {
+            RentalLease memory lease = leases[tokenId][leaseIdsByToken[tokenId][index]];
+            require (!(((block.timestamp >= lease.startTime) && (block.timestamp <= lease.endTime)) || 
+                       ((expires >= lease.startTime) && (expires <= lease.endTime))), 
+                       "overlaps an existing lease");
+        }
+
         licensees[tokenId].user = user;
         licensees[tokenId].endTime = expires;
     }

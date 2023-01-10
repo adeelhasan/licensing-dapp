@@ -38,7 +38,7 @@ The provider eg. a software vendor can setup a variety of licenses which are gro
  -->
 ## Usage
 
-If you need time based licenses, then the LicenseProject contract will be sufficient. If the ability for licensees to rent out their license will be needed, then the RentableLicenseProject (which descends from LicenseProject) should be used. In both cases, use the following to first add a license:
+If you want to use duration based licenses, the LicenseProject contract will be sufficient. If the ability for licensees to rent out their license will be needed, then the RentableLicenseProject (which descends from LicenseProject) should be used. In either case, the sequence is to create a license and for an end user to purchase it.
 
 ```solidity
 function addLicense(string memory name, uint256 maxRenewals, uint256 duration, uint256 price) returns (uint256 licenseId)
@@ -64,28 +64,38 @@ The RentableLicenseProject contract is elaborated for renting out a license. It 
 
 ```solidity
 enum RentalTimeUnit { Seconds, Minutes, Hourly, Daily, Weekly, Monthly, Annual }
+function addRentalListing(
+    uint256 tokenId,
+    RentalTimeUnit timeUnit,
+    uint256 timeUnitPrice,
+    uint256 minimumUnits,
+    uint256 maximumUnits,
+    bool allowStreaming
+)
+    public
+    returns (uint256 listingId)     
 ```
 
 So eg, you can create a listing which lays out a daily rental rate. You can also pick a minimum or maximum number of rental units that need to be bought to start a lease. So eg, you can have an hourly rate, but restrict the user to at least 1 hour or at most 12 hours. At the same time, the same license can have a monthly rate quoted. At the moment there is no support for arbitrary start and end dates for a lease.
 
-Each license can have a single listing per RentalTimeUnit. Eg, you cannot have two hourly rates quoted for the same license.
-
-Leases cannot overlap, eg. if the 15th of April is rented out from 12 pm to 10 pm, then a month long lease from the 10th of April to the 10th of May won't be given.
+Each license can have a single listing per RentalTimeUnit. Eg, you cannot have two hourly rates quoted for the same license. When a renter buys a listing, a RentalLease is established. There can be multiple leases, eg, if a token is for a year, there can be different leases for two different time periods within that year. Leases cannot overlap, eg. if the 15th of April is rented out from 12 pm to 10 pm, then a month long lease from the 10th of April to the 10th of May won't be given.
 
 ```solidity
-    function addRentalListing(
-        uint256 tokenId,
-        RentalTimeUnit timeUnit,
-        uint256 timeUnitPrice,
-        uint256 minimumUnits,
-        uint256 maximumUnits,
-        bool allowStreaming
-    )
-        public
-        returns (uint256 listingId)     
+function buyLease(
+    uint256 tokenId,
+    uint256 listingId,
+    uint256 startTime,
+    uint256 timeUnitsCount,
+    bool streamLease
+) 
+    public
+    payable
+    returns (uint256 leaseId)
 ```
 
-The listing
+## Streaming Rentals
+
+For a RentalListing which has allowStreaming enabled, the RentalLease will have the option to become a stream as well. This means that the billing for the license will be pay-as-you-go based on the price per second as in the RentalListing. The renter can cancel the lease at any point before the lease expiration and get the pro-rated refund. The token holder however cannot cancel the lease, and can withdraw the rent accumulated based on usage. Note that in all other cases, the rent is paid upfront.
 
 
 
