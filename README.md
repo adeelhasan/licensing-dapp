@@ -1,6 +1,6 @@
 # Introduction
 
-Software License NFTs are relatively straightforward, where token ownership establishes a licensee relationship and validates a runtime DRM check. This project augments that concept by having the option to specify an expiration date. This is more in line with how software subscription models work. Additionally, licensees can rent out their license, with a pay-as-you-go / streaming option .
+Software License NFTs are relatively straightforward, where token ownership establishes a licensee relationship which can be validated at runtime. This project augments that concept by having the option to specify an expiration date. This is more in line with how software subscription models work. Additionally, licensees can rent out their license, with a pay-as-you-go / streaming option .
 
 A license can be thought of as a product or a product tier. By grouping licenses under a LicensingProject contract, it is simpler to express various tiers of a product, both in terms of pricing as well as supported functionality. For example, there can be a limited free trial, a lifetime as well as hourly pricing, represented by different licenses.
 
