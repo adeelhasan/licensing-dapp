@@ -229,7 +229,6 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
                        "overlaps an existing lease");
         }
 
-
         _leaseIdCounter.increment();
         leaseId = _leaseIdCounter.current();
 

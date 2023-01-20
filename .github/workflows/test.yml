@@ -25,6 +25,7 @@ jobs:
       - name: Run Forge build
         run: |
           forge --version
+          forge install foundry-rs/forge-std openzeppelin/openzeppelin-contracts Brechtpd/base64 --no-commit
           forge build --sizes
         id: build
 
