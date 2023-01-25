@@ -12,6 +12,13 @@ abstract contract FundsCollector {
     event FundsReceived(address indexed from, address indexed to, uint256 amount);
     event FundsWithdrawn(address indexed by, uint256 amount);
     event RefundAvailable(address indexed for_, uint256 amount);
+    event AttemptToCollectNoFunds();
+
+    error UnableToWithdrawEther();
+    error InsufficientEtherSent(uint256 received, uint256 expected);
+    error PaymentByTokensOnly(uint256 etherSent);
+    error TokenNotSet();
+    error TokenTransferFailed();
 
     constructor(address token) {
         paymentToken = token;
@@ -25,7 +32,7 @@ abstract contract FundsCollector {
             balances[msg.sender] = 0;
             if (paymentToken == address(0)) {
                 (bool success,) = payable(msg.sender).call{value: wholeAmount}("");
-                require(success, "unable to withdraw");
+                if (!success) revert UnableToWithdrawEther();
             }
             else
                 IERC20(paymentToken).transfer(msg.sender,wholeAmount);
@@ -41,11 +48,14 @@ abstract contract FundsCollector {
 
     ///@dev called as a hook
     function _collectPayment(address from, address to, uint256 amount) internal {
-        require(amount > 0, "nothing to collect");
+        if (amount == 0) {
+            emit AttemptToCollectNoFunds();
+            return;
+        }
         if (paymentToken == address(0)) {
             //require(price == msg.value,"expected ether was not sent");
             if (msg.value < amount)
-                revert("not enough ether was sent");
+                revert InsufficientEtherSent(msg.value, amount);
             if (to != address(0)) {
                 balances[to] += amount;
                 emit FundsReceived(from, to, amount);
@@ -56,11 +66,12 @@ abstract contract FundsCollector {
             }
         }
         else {
-            require(msg.value == 0, "payment via tokens only, ether was sent too");
-            require(paymentToken != address(0), "token address not set");
+            if (msg.value > 0) revert PaymentByTokensOnly(msg.value);
+            if (paymentToken == address(0)) revert TokenNotSet();
             
             //tokens are held in the contract till withdraw time, so that there is a uniform interface for interaction
-            require(IERC20(paymentToken).transferFrom(from, address(this), amount), "problem in token transfer");
+            bool result = IERC20(paymentToken).transferFrom(from, address(this), amount);
+            if (!result) revert TokenTransferFailed();
             if (to != address(0))
                 balances[to] += amount;
         }

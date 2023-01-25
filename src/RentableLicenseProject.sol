@@ -3,9 +3,7 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/console.sol";
-import "./IERC4907.sol";
 import "./LicenseProject.sol";
-import "utility/FundsCollector.sol";
 
 enum RentalTimeUnit { Seconds, Minutes, Hourly, Daily, Weekly, Monthly, Annual }
 struct RentalListing {
@@ -31,7 +29,7 @@ struct StreamingLeaseInfo {
     bool ended;
 }
 
-contract RentableLicenseProject is LicenseProject, IERC4907 {
+contract RentableLicenseProject is LicenseProject {
 
     using Counters for Counters.Counter;
 
@@ -40,8 +38,8 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
     mapping (uint256 => StreamingLeaseInfo) public streamingLeases;
 
     //iterators for the mappings above
-    mapping(uint256 => uint256[]) private listingIdsByToken;
-    mapping(uint256 => uint256[]) private leaseIdsByToken;
+    mapping(uint256 => uint256[]) internal listingIdsByToken;
+    mapping(uint256 => uint256[]) internal leaseIdsByToken;
 
     Counters.Counter private _leaseIdCounter;
     Counters.Counter private _listingIdCounter;
@@ -58,10 +56,7 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
     event ListingUpdated(
         uint256 indexed tokenId,
         address indexed lister,
-        uint256 timeUnit,
-        uint256 pricePerUnit,
-        uint256 minUnits,
-        uint256 maxUnits
+        uint256 timeUnit
     );
 
     event ListingRemoved(
@@ -81,6 +76,20 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
         uint256 indexed leaseId,
         address endedBy
     );    
+
+
+    error ListingNotValid();
+    error StreamingNotEnabled(uint256 listingId);
+    error NotEnoughTimeBought(uint256 actual, uint256 min);
+    error TooMuchTimeBought(uint256 actual, uint256 max);
+    error InconsistentRange(uint256 start, uint256 end);
+    error ListingCannotBeFree();
+    error StreamingRateOnlyInSeconds();
+    error ListingTimeUnitAlreadyExists(uint256 timeUnit);
+    error ListingCannotOutlastLicense();
+    error CannotRentBeyondLicenseExpiration();
+    error OnlyRenter();
+    error StreamingLeasesCannotBeExtended();
 
     constructor(string memory name, string memory symbol, address token) LicenseProject(name, symbol, token) {
     }
@@ -113,22 +122,20 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
         public
         returns (uint256 listingId)
     {
-        if (maximumUnits > 0)
-            require(maximumUnits >= minimumUnits, "inconsistent max and min units");
-        require(checkValidity(tokenId),"token not eligible for renting");
-        require(msg.sender == ownerOf(tokenId),"only token owner can list");
-        require(timeUnitPrice > 0, "a listing cannot be free");
-        if (allowStreaming)
-            require(timeUnit == RentalTimeUnit.Seconds, "streaming only when seconds are used for time unit");
+        if ((maximumUnits > 0) && maximumUnits < minimumUnits) revert InconsistentRange(maximumUnits, minimumUnits);
+        if (!checkValidity(tokenId)) revert TokenNotValid(tokenId);
+        if (msg.sender != ownerOf(tokenId)) revert OnlyTokenOwner();
+        if (timeUnitPrice == 0) revert ListingCannotBeFree();
+        if (allowStreaming && (timeUnit != RentalTimeUnit.Seconds)) revert StreamingRateOnlyInSeconds();
 
-        uint256 timeLength = convertTimeUnitToSeconds(timeUnit, minimumUnits);
-        if ((timeLength > 0) && (licensees[tokenId].endTime > 0)) {
-            require(block.timestamp + timeLength <= licensees[tokenId].endTime, "listing will expire before minimum time");
-        }
+        uint256 timeLength = RentableLicenseHelper.convertTimeUnitToSeconds(uint256(timeUnit), minimumUnits);
+        if (((timeLength > 0) && (licensees[tokenId].endTime > 0)) && (block.timestamp + timeLength > licensees[tokenId].endTime))
+                revert ListingCannotOutlastLicense();
 
         uint256 count = listingIdsByToken[tokenId].length;
         for (uint256 index; index < count; index++) {
-            require(listings[tokenId][listingIdsByToken[tokenId][index]].timeUnit != timeUnit, "listing timeUnit already exists");
+            if (listings[tokenId][listingIdsByToken[tokenId][index]].timeUnit == timeUnit)
+                revert ListingTimeUnitAlreadyExists(uint256(timeUnit));
         }
 
         _listingIdCounter.increment();
@@ -148,9 +155,8 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
     )
         public 
     {
-        if (maximumUnits > 0)
-            require(maximumUnits >= minimumUnits, "inconsistent max and min units");
-        require(msg.sender == ownerOf(tokenId),"only token owner can list");
+        if ((maximumUnits > 0) && maximumUnits < minimumUnits) revert InconsistentRange(maximumUnits, minimumUnits);
+        if (msg.sender != ownerOf(tokenId)) revert OnlyTokenOwner();
 
 /*         uint256 timeLength = timeUnitLengths[uint256(timeUnit)] * minimumUnits;
         if ((timeLength > 0) && (licensees[tokenId].endTime > 0)) {
@@ -158,16 +164,16 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
         }
  */
         RentalListing memory listing = listings[tokenId][listingId];
-        require(listing.id > 0, "listing not valid");
+        if (listing.id == 0) revert ListingNotValid();
         listings[tokenId][listingId].pricePerTimeUnit = timeUnitPrice;
         listings[tokenId][listingId].maximumUnits = maximumUnits;
         listings[tokenId][listingId].minimumUnits = minimumUnits;
 
-        emit ListingUpdated(tokenId, msg.sender, listingId, timeUnitPrice, minimumUnits, maximumUnits);
+        emit ListingUpdated(tokenId, msg.sender, listingId);
     }
 
     function removeRentalListing(uint256 tokenId, uint256 listingId) external {
-        require(msg.sender == ownerOf(tokenId),"only for token owners");
+        if (msg.sender != ownerOf(tokenId)) revert OnlyTokenOwner();
 
         uint256 count = listingIdsByToken[tokenId].length;
         for (uint256 index; index < count; index++) {
@@ -175,11 +181,11 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
                 if (count-1 == index)
                     listingIdsByToken[tokenId].pop();
                 else {
-                    listingIdsByToken[tokenId][index] = listingIdsByToken[tokenId][listingIdsByToken[tokenId].length-1];
+                    listingIdsByToken[tokenId][index] = listingIdsByToken[tokenId][count-1];
                     listingIdsByToken[tokenId].pop();                
                 }
-
                 emit ListingRemoved(tokenId, listingId);
+                break;
             }
         }
     }
@@ -201,25 +207,27 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
         payable
         returns (uint256 leaseId)
     {
-        require(_checkValidity(tokenId,address(0)),"license not current");
+        if (!_checkValidity(tokenId,address(0)))
+            revert LicenseNotCurrent(tokenId);
         require(timeUnitsCount > 0,"have to buy some time");
 
         RentalListing memory listing = listings[tokenId][listingId];
-        require(listing.id > 0, "listing not valid");
+        if (listing.id == 0) revert ListingNotValid();
 
-        if (streamLease)
-            require(listing.streamingAllowed, "streaming is not enabled on this listing");
-        require(timeUnitsCount >= listing.minimumUnits,"not enough time bought");
-        if (listing.maximumUnits > 0)
-            require(timeUnitsCount <= listing.maximumUnits,"cannot buy that much time");
+        if (streamLease && !listing.streamingAllowed)
+            revert StreamingNotEnabled(listingId);
+        if ((listing.minimumUnits > 0) && (timeUnitsCount < listing.minimumUnits))
+            revert NotEnoughTimeBought(timeUnitsCount, listing.minimumUnits);
+        if ((listing.maximumUnits > 0) && (timeUnitsCount > listing.maximumUnits))
+            revert TooMuchTimeBought(timeUnitsCount, listing.maximumUnits);
 
         if (startTime == START_NOW)
             startTime = block.timestamp;
 
-        uint256 rentalTimeLength = convertTimeUnitToSeconds(listing.timeUnit, timeUnitsCount);
+        uint256 rentalTimeLength = RentableLicenseHelper.convertTimeUnitToSeconds(uint256(listing.timeUnit), timeUnitsCount);
         uint256 endTime = startTime + rentalTimeLength;
-        if (licensees[tokenId].endTime > 0)
-            require(endTime < licensees[tokenId].endTime,"cannot rent beyond end of license");
+        if ((licensees[tokenId].endTime > 0) && (endTime > licensees[tokenId].endTime))
+            revert CannotRentBeyondLicenseExpiration();
         uint256 rentalPrice = listing.pricePerTimeUnit * timeUnitsCount;
 
         for (uint256 index; index < leaseIdsByToken[tokenId].length; index++) {
@@ -257,12 +265,14 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
         external
         payable
     {
-        require(_checkValidity(tokenId,address(0)),"license not current");
+        if (!_checkValidity(tokenId,address(0)))
+            revert LicenseNotCurrent(tokenId);        
+
         RentalLease memory lease = _getCurrentLease(tokenId);
-        require(lease.renter == msg.sender, "only current renter can extend lease");
+        if (lease.renter != msg.sender) revert OnlyRenter();
         uint256 startTime = lease.endTime + 1;
         StreamingLeaseInfo memory sli = streamingLeases[lease.id];
-        require(sli.ratePerSecond == 0, "streaming leases cannot be extended");
+        if (sli.ratePerSecond != 0) revert StreamingLeasesCannotBeExtended();
         buyLease(tokenId, listingId, startTime, timeUnitsCount, false);
     }
 
@@ -271,7 +281,7 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
     /// @param leaseId the rental lease id
     function endStreamingLease(uint256 tokenId, uint256 leaseId) public {
         RentalLease memory lease = leases[tokenId][leaseId];
-        require(lease.renter == msg.sender, "only the leasee can end the lease");
+        if (lease.renter != msg.sender) revert OnlyRenter();
         require(block.timestamp < lease.endTime, "can only cancel before endTime");
         StreamingLeaseInfo memory sli = streamingLeases[leaseId];
         require(sli.ratePerSecond > 0, "streaming not valid");
@@ -294,7 +304,7 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
     }
 
     function getRentFromStreamingLease(uint256 tokenId, uint256 leaseId) public {
-        require(ownerOf(tokenId) == msg.sender, "can only be called by token owner");
+        if (ownerOf(tokenId) != msg.sender) revert OnlyTokenOwner();
 
         RentalLease memory lease = leases[tokenId][leaseId];
         require(lease.id == leaseId, "unpexpected lease id");
@@ -316,55 +326,10 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
             streamingLeases[leaseId].balanceAlreadyPaid += (timeSinceStart * sli.ratePerSecond);
         }
     }
-
-    /// @notice IERC4907 support - this can effectively start a lease
-    function setUser(uint256 tokenId, address user, uint64 expires) external override {
-        //should start a new lease, and revert if there is a current one in this time period
-        for (uint256 index; index < leaseIdsByToken[tokenId].length; index++) {
-            RentalLease memory lease = leases[tokenId][leaseIdsByToken[tokenId][index]];
-            require (!(((block.timestamp >= lease.startTime) && (block.timestamp <= lease.endTime)) || 
-                       ((expires >= lease.startTime) && (expires <= lease.endTime))), 
-                       "overlaps an existing lease");
-        }
-
-        licensees[tokenId].user = user;
-        licensees[tokenId].endTime = expires;
-    }
     
-    /// @notice IERC4907 support 
-    function userOf(uint256 tokenId) external view override returns(address) {
-        RentalLease memory lease = _getCurrentLease(tokenId);
-        if (lease.renter != address(0))
-            return lease.renter;
-        else
-            return licensees[tokenId].user; 
-    }
-
-    /// @notice IERC4907 support 
-    /// what should be returned if the token id is invalid? throw an error?
-    /// or if the user has already expired
-    function userExpires(uint256 tokenId) external view override returns(uint256) {
-        RentalLease memory lease = _getCurrentLease(tokenId);
-        if (lease.renter != address(0))
-            return lease.endTime;
-        else
-            return licensees[tokenId].endTime; //TBD what to do about the 0
-    }
-
-    /// @notice get all leases for a token
-    function leasesForLicense(uint256 tokenId) external view returns (RentalLease[] memory) {
-        require(this.ownerOf(tokenId) != address(0),"token id has not been minted");        
-        uint256 count = leaseIdsByToken[tokenId].length;
-        RentalLease[] memory result = new RentalLease[](count);
-        for (uint256 index = 0; index < count; index++) {
-            result[index] = leases[tokenId][leaseIdsByToken[tokenId][index]];
-        }
-        return result;
-    }
-
     /// @notice get all leases for a token
     function listingsForLicense(uint256 tokenId) external view returns (RentalListing[] memory) {
-        require(this.ownerOf(tokenId) != address(0),"token id has not been minted");        
+        if (this.ownerOf(tokenId) == address(0)) revert TokenNotMinted(tokenId);
         uint256 count = listingIdsByToken[tokenId].length;
         RentalListing[] memory result = new RentalListing[](count);
         for (uint256 index = 0; index < count; index++) {
@@ -415,8 +380,11 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
         }
     }
 
+}
 
-    function convertTimeUnitToSeconds(RentalTimeUnit timeUnit_, uint256 timeUnitCount) pure internal returns(uint256 timeLength) {
+library RentableLicenseHelper {
+
+    function convertTimeUnitToSeconds(uint256 timeUnit_, uint256 timeUnitCount) pure public returns(uint256 timeLength) {
         uint256 timeUnit = uint256(timeUnit_);
         assembly {
             switch timeUnit
@@ -443,5 +411,5 @@ contract RentableLicenseProject is LicenseProject, IERC4907 {
                 }
         }
 
-    }
+    }   
 }

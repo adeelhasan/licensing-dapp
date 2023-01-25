@@ -5,7 +5,7 @@ pragma solidity ^0.8.13;
 import "openzeppelin-contracts/utils/Counters.sol";
 import "openzeppelin-contracts/access/Ownable.sol";
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
-import "openzeppelin-contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "openzeppelin-contracts/token/ERC721/ERC721.sol";
 import "utility/FundsCollector.sol";
 
 struct Licensee {
@@ -37,7 +37,7 @@ struct LicenseeInfo {
 /// one project for a software product, eg, and different licenses for
 /// different plans. users purchase licenses and have a licensee relationship
 /// @dev each licensee relationship is mapped to a ERC 721 token
-contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
+contract LicenseProject is ERC721, Ownable, FundsCollector {
 
     using Counters for Counters.Counter;
 
@@ -50,6 +50,7 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
 
     mapping(uint256 => Licensee) public licensees;
     mapping(uint256 => License) public licenses;
+    mapping(address => uint256[]) public tokensOwned;
 
     // for readability
     uint256 constant internal START_NOW = 0;
@@ -57,6 +58,12 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
 
     Counters.Counter private _tokenIdCounter;
     Counters.Counter private _licenseIdCounter;
+
+    error LicenseStatusNotValid();
+    error LicenseNotCurrent(uint256 tokenId);
+    error TokenNotMinted(uint256 tokenId);
+    error TokenNotValid(uint256 tokenId);
+    error OnlyTokenOwner();
     
     /// @notice setup the ERC 721 token
     /// @param token the ERC20 token that is accepted as payment, or pass address(0) if the 
@@ -78,7 +85,7 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
     /// @notice this will auto renewal as part of the validity check
     ///         this is 3x more gas costly, but very useful if so needed
     function checkValidityWithAutoRenewal(uint256 tokenId) public returns(bool) {
-        require(this.ownerOf(tokenId) != address(0),"token id has not been minted");
+        if (this.ownerOf(tokenId) == address(0)) revert TokenNotMinted(tokenId);
 
         Licensee memory licensee = licensees[tokenId];
         if (licensee.user != msg.sender)
@@ -139,13 +146,15 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
             uint256
         )
     {
-        require(startTime == START_NOW || startTime > block.timestamp,"startTime is not correct");
+        require(startTime == START_NOW || startTime > block.timestamp,"!startTime");
         License memory license = licenses[licenseId];
-        require(license.status != LicenseStatus.None, "license not valid");
+        if (license.status == LicenseStatus.None) revert LicenseStatusNotValid();
 
         _collectPayment(msg.sender, owner(), license.price);
         uint256 newTokenId = _getNewTokenId(msg.sender);        
         _addDuration(newTokenId, msg.sender, licenseId, startTime, license.duration, license.maxRenewals);
+
+        tokensOwned[msg.sender].push(newTokenId);
 
         return newTokenId;
     }
@@ -154,8 +163,8 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
     /// @param tokenId the token representing the licensee
     /// @param startTime the starting time, or 0 if needing to start immediately
     function renewLicense(uint256 tokenId, uint256 startTime) public payable {
-        require(this.ownerOf(tokenId) != address(0),"token id has not been minted");        
-        require(startTime == START_NOW || startTime > block.timestamp,"startTime is not correct");
+        if (this.ownerOf(tokenId) == address(0)) revert TokenNotMinted(tokenId);
+        require(startTime == START_NOW || startTime > block.timestamp,"!startTime");
 
         Licensee memory licensee = licensees[tokenId];
         License memory license = licenses[licensee.licenseId];
@@ -180,7 +189,7 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
     {
         require(startTime == START_NOW || startTime > block.timestamp);
         License memory license = licenses[licenseId];
-        require(license.status != LicenseStatus.None, "license not valid");
+        if (license.status == LicenseStatus.None) revert LicenseStatusNotValid();
 
         uint256 newTokenId = _getNewTokenId(to);
         _addDuration(newTokenId, to, licenseId, startTime, startTime + license.duration, license.maxRenewals);
@@ -205,8 +214,8 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
     /// for renting, see the RentableLicenseProject; in theory if you get payment for 
     /// assigning the licensee relationship, then that is renting. but here the payment is not stipulated
     function assignLicenseTo(uint256 tokenId, address to) external virtual {
-        require(checkValidity(tokenId),"token is not valid");
-        require(licensees[tokenId].user == ownerOf(tokenId),"token already re-assigned)");
+        if (!checkValidity(tokenId)) revert LicenseNotCurrent(tokenId);
+        require(licensees[tokenId].user == ownerOf(tokenId),"token rented)");
 
         licensees[tokenId].user = to;
         
@@ -215,10 +224,11 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
 
     /// @notice all licensee relationships for msg.sender
     function myLicenses() external view returns(LicenseeInfo[] memory) {
-        uint256 count = balanceOf(msg.sender);
+        uint256[] memory myTokensOwned = tokensOwned[msg.sender];
+        uint256 count = myTokensOwned.length;
         LicenseeInfo[] memory result = new LicenseeInfo[](count);
         for (uint256 i; i < count; i++) {
-            uint256 tokenId = tokenOfOwnerByIndex(msg.sender,i);
+            uint256 tokenId = myTokensOwned[i];
             result[i] = LicenseeInfo(tokenId, licensees[tokenId], licenses[licensees[tokenId].licenseId]);
         }
         return result;
@@ -237,7 +247,7 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
     /// @notice sets the status, mainly for what would be shown in list of available to buy licenses
     function setLicenseStatus(uint256 licenseId, LicenseStatus status) external onlyOwner() {
         License memory license = licenses[licenseId];
-        require(license.status != LicenseStatus.None, "license not valid");
+        if (license.status == LicenseStatus.None) revert LicenseStatusNotValid();
         licenses[licenseId].status = status;
     }
 
@@ -275,20 +285,37 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
         override
         virtual
     {
-        require(batchSize == 1,"bulk transfers are not supported for licenses");
+        require(batchSize == 1,"no bulk transfers");
         super._afterTokenTransfer(from,to,firstTokenId,batchSize);
 
         // have to account for the initial transfer during minting
         if (licensees[firstTokenId].user != address(0)) {
-            require(licensees[firstTokenId].user == from,"cannot transfer rented token");
+            require(licensees[firstTokenId].user == from,"rented token");
             licensees[firstTokenId].user = to;
+        }
+
+        //account for the transfer in the token ownership list
+        if (from != to && to != address(0) && from != address(0)) {
+            tokensOwned[to].push(firstTokenId);
+
+            uint256 count = tokensOwned[from].length;
+            for (uint256 index; index < count; index++) {
+                if (tokensOwned[from][index] == firstTokenId) {
+                    if (count-1 == index)
+                        tokensOwned[from].pop();
+                    else {
+                        tokensOwned[from][index] = tokensOwned[from][count-1];
+                        tokensOwned[from].pop();                
+                    }
+                }
+            }   
         }
     }
 
     /// @dev common code for validity check
     function _checkValidity(uint256 tokenId, address user) internal view returns (bool) {
         Licensee memory licensee = licensees[tokenId];
-        require (licensee.user != address(0),"not assigned or minted");
+        if (licensee.user == address(0)) revert TokenNotMinted(tokenId);
         if (user != address(0) && licensee.user != user)
             return false;
         return (licensee.endTime == PERPETUAL ||
@@ -314,7 +341,7 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
     {
         Licensee memory licensee = licensees[tokenId];
         if (maxRenewals > 0)
-            require(licensee.renewalsCount <= maxRenewals, "limit on renewals is reached");
+            require(licensee.renewalsCount <= maxRenewals, "no renewals left");
 
         //buying for the first time
         if (licensee.renewalsCount == 0) {
@@ -328,8 +355,8 @@ contract LicenseProject is ERC721Enumerable, Ownable, FundsCollector {
             emit LicenseBought(msg.sender, tokenId, licenseId);
         }
         else {
-            require(licenseId == licensee.licenseId, "cannot extend another license");
-            require(licensee.endTime != PERPETUAL,"license is already perpetual");
+            require(licenseId == licensee.licenseId, "diff license");
+            require(licensee.endTime != PERPETUAL,"already perpetual");
 
             if (checkValidity(tokenId) || (licensee.startTime > block.timestamp))
                 //currently valid or valid in the future, ignore start and simply extend
