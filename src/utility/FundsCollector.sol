@@ -52,6 +52,9 @@ abstract contract FundsCollector {
             return;
         }
 
+        if (entireBalance)
+            amount = currentBalance;
+
         if (currentBalance > 0) {
             balances[msg.sender] = currentBalance - amount;
             if (paymentToken == address(0)) {
