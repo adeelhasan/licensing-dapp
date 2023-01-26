@@ -6,8 +6,11 @@ import "./IERC4907.sol";
 import "./../RentableLicenseProject.sol";
 
 
-/// @notice this project is currently in development. It currently compiles to a size > max contract size
-contract RentableLicenseProject4907 is RentableLicenseProject, IERC4907 {
+/// @notice this project is currently experimental, the 4907 needs to be made compatible with
+/// internal data structures such as RentalLease and listing. marked abstract to prevent
+/// usage as well as so that Foundry does not deploy it
+
+abstract contract RentableLicenseProject4907 is RentableLicenseProject, IERC4907 {
 
 
     constructor(string memory name, string memory symbol, address token) RentableLicenseProject(name, symbol, token) {}
@@ -21,7 +24,6 @@ contract RentableLicenseProject4907 is RentableLicenseProject, IERC4907 {
                        ((expires >= lease.startTime) && (expires <= lease.endTime)))
                        revert LeasesCannotOverlap();
         }
-
         licensees[tokenId].user = user;
         licensees[tokenId].endTime = expires;
     }
@@ -43,7 +45,7 @@ contract RentableLicenseProject4907 is RentableLicenseProject, IERC4907 {
         if (lease.renter != address(0))
             return lease.endTime;
         else
-            return licensees[tokenId].endTime; //TBD what to do about the 0
+             return licensees[tokenId].endTime; //TBD what to do about the 0
     }
 
 

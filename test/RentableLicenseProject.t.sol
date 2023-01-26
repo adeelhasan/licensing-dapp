@@ -97,7 +97,7 @@ contract RentableLicenseProjectTest is LicensingTestBase {
 
         vm.startPrank(testAccount2);
         uint balanceBefore = paymentToken.balanceOf(testAccount2);
-        licenseProject2.withdraw();
+        licenseProject2.withdrawAll();
         uint balanceAfter = paymentToken.balanceOf(testAccount2);
         require(balanceAfter > balanceBefore,"balance was not transferred");
         vm.stopPrank();
@@ -160,7 +160,7 @@ contract RentableLicenseProjectTest is LicensingTestBase {
         uint256 balanceBefore = testAccount2.balance;
         vm.warp(block.timestamp + 3 days);
         licenseProject.endStreamingLease(licenseTokenId1, streamingLeaseId);
-        licenseProject.withdraw();
+        licenseProject.withdrawAll();
         uint256 balanceAfter = testAccount2.balance;
         vm.stopPrank();
 
@@ -170,7 +170,7 @@ contract RentableLicenseProjectTest is LicensingTestBase {
         //the token holder would get the 1 day of rent that was used by the stream
         balanceBefore = testAccount1.balance;
         vm.prank(testAccount1);
-        licenseProject.withdraw();
+        licenseProject.withdrawAll();
         balanceAfter = testAccount1.balance;
         require(1 days * 1000 == (balanceAfter - balanceBefore), "token holder balance not as expected");
     }
@@ -185,7 +185,7 @@ contract RentableLicenseProjectTest is LicensingTestBase {
         uint256 balanceBefore = testAccount2.balance;
         vm.warp(block.timestamp + 1 days);
         licenseProject.endStreamingLease(licenseTokenId1, streamingLeaseId);
-        licenseProject.withdraw();
+        licenseProject.withdrawAll();
         uint256 balanceAfter = testAccount2.balance;
         vm.stopPrank();
 
@@ -195,7 +195,7 @@ contract RentableLicenseProjectTest is LicensingTestBase {
         //the token holder would get the 1 day of rent that was used by the stream
         balanceBefore = testAccount1.balance;
         vm.prank(testAccount1);
-        licenseProject.withdraw();
+        licenseProject.withdrawAll();
         balanceAfter = testAccount1.balance;
         require(0 == (balanceAfter - balanceBefore), "token holder balance not as expected");
     }
@@ -213,7 +213,7 @@ contract RentableLicenseProjectTest is LicensingTestBase {
         vm.warp(block.timestamp + 5 days);
         vm.expectRevert(RentableLicenseProject.StreamingLeaseCanOnlyCancelBeforeEnd.selector);
         licenseProject.endStreamingLease(licenseTokenId1, streamingLeaseId);
-        licenseProject.withdraw();
+        licenseProject.withdrawAll();
         uint256 balanceAfter = testAccount2.balance;
         vm.stopPrank();
 
@@ -223,7 +223,7 @@ contract RentableLicenseProjectTest is LicensingTestBase {
         //the token holder would get full rent
         vm.startPrank(testAccount1);
         licenseProject.getRentFromStreamingLease(licenseTokenId1, streamingLeaseId);
-        licenseProject.withdraw();
+        licenseProject.withdrawAll();
         vm.stopPrank();
         balanceAfter = testAccount1.balance;
         require((3 days * 1000) == (balanceAfter - tokenHolderbalanceBefore), "token holder balance not as expected");
@@ -241,7 +241,7 @@ contract RentableLicenseProjectTest is LicensingTestBase {
         uint256 balanceBefore = paymentToken.balanceOf(testAccount1);
         vm.warp(block.timestamp + 3 days);
         licenseProject2.endStreamingLease(licenseTokenId2, streamingLeaseId);
-        licenseProject2.withdraw();
+        licenseProject2.withdrawAll();
         uint256 balanceAfter = paymentToken.balanceOf(testAccount1);
         vm.stopPrank();
 
@@ -251,7 +251,7 @@ contract RentableLicenseProjectTest is LicensingTestBase {
         //the token holder would get the 1 day of rent that was used by the stream
         balanceBefore = paymentToken.balanceOf(testAccount2);
         vm.prank(testAccount2);
-        licenseProject2.withdraw();
+        licenseProject2.withdrawAll();
         balanceAfter = paymentToken.balanceOf(testAccount2);
         require(1 days * 1000 == (balanceAfter - balanceBefore), "token holder balance not as expected");
     }

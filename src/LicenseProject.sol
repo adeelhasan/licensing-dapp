@@ -80,7 +80,7 @@ contract LicenseProject is ERC721, Ownable, FundsCollector {
         address token
     )
         ERC721(name,symbol)
-        FundsCollector(token)
+        FundsCollector(token, false, false)
     {}
 
     /// @notice the primary check for the licensee validity
