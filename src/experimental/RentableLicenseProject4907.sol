@@ -17,9 +17,9 @@ contract RentableLicenseProject4907 is RentableLicenseProject, IERC4907 {
         //should start a new lease, and revert if there is a current one in this time period
         for (uint256 index; index < leaseIdsByToken[tokenId].length; index++) {
             RentalLease memory lease = leases[tokenId][leaseIdsByToken[tokenId][index]];
-            require (!(((block.timestamp >= lease.startTime) && (block.timestamp <= lease.endTime)) || 
-                       ((expires >= lease.startTime) && (expires <= lease.endTime))), 
-                       "overlaps an existing lease");
+            if (((block.timestamp >= lease.startTime) && (block.timestamp <= lease.endTime)) || 
+                       ((expires >= lease.startTime) && (expires <= lease.endTime)))
+                       revert LeasesCannotOverlap();
         }
 
         licensees[tokenId].user = user;

@@ -211,7 +211,7 @@ contract RentableLicenseProjectTest is LicensingTestBase {
 
         uint256 balanceBefore = testAccount2.balance;
         vm.warp(block.timestamp + 5 days);
-        vm.expectRevert("can only cancel before endTime");
+        vm.expectRevert(RentableLicenseProject.StreamingLeaseCanOnlyCancelBeforeEnd.selector);
         licenseProject.endStreamingLease(licenseTokenId1, streamingLeaseId);
         licenseProject.withdraw();
         uint256 balanceAfter = testAccount2.balance;

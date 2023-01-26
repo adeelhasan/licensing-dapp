@@ -78,21 +78,27 @@ contract RentableLicenseProject is LicenseProject {
     );    
 
 
-    error ListingNotValid();
-    error StreamingNotEnabled(uint256 listingId);
     error NotEnoughTimeBought(uint256 actual, uint256 min);
     error TooMuchTimeBought(uint256 actual, uint256 max);
+    error TimeBoughtCannotBeZero();
     error InconsistentRange(uint256 start, uint256 end);
+    error LeaseNotValid();
+    error LeasesCannotOverlap();
+    error ListingNotValid();
     error ListingCannotBeFree();
-    error StreamingRateOnlyInSeconds();
     error ListingTimeUnitAlreadyExists(uint256 timeUnit);
     error ListingCannotOutlastLicense();
     error CannotRentBeyondLicenseExpiration();
     error OnlyRenter();
     error StreamingLeasesCannotBeExtended();
+    error StreamingLeaseCanOnlyCancelBeforeEnd();
+    error StreamingRateOnlyInSeconds();
+    error StreamingNotEnabled(uint256 listingId);
+    error StreamingAlreadyEnded();
+    error StreamingDidntStartAsYet();
+    error StreamNotValid();
 
-    constructor(string memory name, string memory symbol, address token) LicenseProject(name, symbol, token) {
-    }
+    constructor(string memory name, string memory symbol, address token) LicenseProject(name, symbol, token) {}
 
     /// @notice the renter takes precendence over the licensee/owner
     /// @dev there is only one active lease at any particular time
@@ -207,9 +213,10 @@ contract RentableLicenseProject is LicenseProject {
         payable
         returns (uint256 leaseId)
     {
+        if (startTime != START_NOW && startTime < block.timestamp) revert StartTimeNotValid();
         if (!_checkValidity(tokenId,address(0)))
             revert LicenseNotCurrent(tokenId);
-        require(timeUnitsCount > 0,"have to buy some time");
+        if (timeUnitsCount == 0) revert TimeBoughtCannotBeZero();
 
         RentalListing memory listing = listings[tokenId][listingId];
         if (listing.id == 0) revert ListingNotValid();
@@ -232,9 +239,9 @@ contract RentableLicenseProject is LicenseProject {
 
         for (uint256 index; index < leaseIdsByToken[tokenId].length; index++) {
             RentalLease memory lease = leases[tokenId][leaseIdsByToken[tokenId][index]];
-            require (!(((startTime >= lease.startTime) && (startTime <= lease.endTime)) || 
-                       ((endTime >= lease.startTime) && (endTime <= lease.endTime))), 
-                       "overlaps an existing lease");
+            if (((startTime >= lease.startTime) && (startTime <= lease.endTime)) || 
+                       ((endTime >= lease.startTime) && (endTime <= lease.endTime)))
+                       revert LeasesCannotOverlap();
         }
 
         _leaseIdCounter.increment();
@@ -282,10 +289,10 @@ contract RentableLicenseProject is LicenseProject {
     function endStreamingLease(uint256 tokenId, uint256 leaseId) public {
         RentalLease memory lease = leases[tokenId][leaseId];
         if (lease.renter != msg.sender) revert OnlyRenter();
-        require(block.timestamp < lease.endTime, "can only cancel before endTime");
+        if (block.timestamp >= lease.endTime) revert StreamingLeaseCanOnlyCancelBeforeEnd();
         StreamingLeaseInfo memory sli = streamingLeases[leaseId];
-        require(sli.ratePerSecond > 0, "streaming not valid");
-        require(!sli.ended, "streaming already finished");
+        if (sli.ratePerSecond == 0) revert StreamNotValid();
+        if (sli.ended) revert StreamingAlreadyEnded();
 
         //before the start, refund whole amount back to renter
         if (lease.startTime > block.timestamp) {
@@ -307,11 +314,11 @@ contract RentableLicenseProject is LicenseProject {
         if (ownerOf(tokenId) != msg.sender) revert OnlyTokenOwner();
 
         RentalLease memory lease = leases[tokenId][leaseId];
-        require(lease.id == leaseId, "unpexpected lease id");
-        require(block.timestamp > lease.startTime, "stream has not started as yet");
+        if (lease.id != leaseId) revert LeaseNotValid();        
+        if (block.timestamp < lease.startTime) revert StreamingDidntStartAsYet();
 
         StreamingLeaseInfo memory sli = streamingLeases[leaseId];
-        require(sli.ratePerSecond > 0, "stream not valid");
+        if (sli.ratePerSecond == 0) revert StreamNotValid();
 
         if (lease.endTime >= block.timestamp) {
             //stream has ended

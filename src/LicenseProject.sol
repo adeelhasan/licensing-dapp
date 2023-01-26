@@ -64,6 +64,12 @@ contract LicenseProject is ERC721, Ownable, FundsCollector {
     error TokenNotMinted(uint256 tokenId);
     error TokenNotValid(uint256 tokenId);
     error OnlyTokenOwner();
+    error StartTimeNotValid();
+    error CannotExtendWithDifferentLicense();
+    error CannotExtendPerpetualLicense();
+    error NoRenewalsLeft();
+    error TokenAlreadyReassigned();
+    error BulkTransfersNotSupported();
     
     /// @notice setup the ERC 721 token
     /// @param token the ERC20 token that is accepted as payment, or pass address(0) if the 
@@ -146,7 +152,7 @@ contract LicenseProject is ERC721, Ownable, FundsCollector {
             uint256
         )
     {
-        require(startTime == START_NOW || startTime > block.timestamp,"!startTime");
+        if (startTime != START_NOW && startTime < block.timestamp) revert StartTimeNotValid();
         License memory license = licenses[licenseId];
         if (license.status == LicenseStatus.None) revert LicenseStatusNotValid();
 
@@ -164,7 +170,7 @@ contract LicenseProject is ERC721, Ownable, FundsCollector {
     /// @param startTime the starting time, or 0 if needing to start immediately
     function renewLicense(uint256 tokenId, uint256 startTime) public payable {
         if (this.ownerOf(tokenId) == address(0)) revert TokenNotMinted(tokenId);
-        require(startTime == START_NOW || startTime > block.timestamp,"!startTime");
+        if (startTime != START_NOW && startTime < block.timestamp) revert StartTimeNotValid();
 
         Licensee memory licensee = licensees[tokenId];
         License memory license = licenses[licensee.licenseId];
@@ -187,7 +193,7 @@ contract LicenseProject is ERC721, Ownable, FundsCollector {
             uint256
         )
     {
-        require(startTime == START_NOW || startTime > block.timestamp);
+        if (startTime != START_NOW && startTime < block.timestamp) revert StartTimeNotValid();
         License memory license = licenses[licenseId];
         if (license.status == LicenseStatus.None) revert LicenseStatusNotValid();
 
@@ -215,7 +221,7 @@ contract LicenseProject is ERC721, Ownable, FundsCollector {
     /// assigning the licensee relationship, then that is renting. but here the payment is not stipulated
     function assignLicenseTo(uint256 tokenId, address to) external virtual {
         if (!checkValidity(tokenId)) revert LicenseNotCurrent(tokenId);
-        require(licensees[tokenId].user == ownerOf(tokenId),"token rented)");
+        if (licensees[tokenId].user != ownerOf(tokenId)) revert TokenAlreadyReassigned();
 
         licensees[tokenId].user = to;
         
@@ -285,12 +291,12 @@ contract LicenseProject is ERC721, Ownable, FundsCollector {
         override
         virtual
     {
-        require(batchSize == 1,"no bulk transfers");
+        if (batchSize > 1) revert BulkTransfersNotSupported();
         super._afterTokenTransfer(from,to,firstTokenId,batchSize);
 
         // have to account for the initial transfer during minting
         if (licensees[firstTokenId].user != address(0)) {
-            require(licensees[firstTokenId].user == from,"rented token");
+            if (licensees[firstTokenId].user != from) revert TokenAlreadyReassigned();
             licensees[firstTokenId].user = to;
         }
 
@@ -340,8 +346,8 @@ contract LicenseProject is ERC721, Ownable, FundsCollector {
         private
     {
         Licensee memory licensee = licensees[tokenId];
-        if (maxRenewals > 0)
-            require(licensee.renewalsCount <= maxRenewals, "no renewals left");
+        if ((maxRenewals > 0) && (licensee.renewalsCount == maxRenewals))
+            revert NoRenewalsLeft();
 
         //buying for the first time
         if (licensee.renewalsCount == 0) {
@@ -355,8 +361,8 @@ contract LicenseProject is ERC721, Ownable, FundsCollector {
             emit LicenseBought(msg.sender, tokenId, licenseId);
         }
         else {
-            require(licenseId == licensee.licenseId, "diff license");
-            require(licensee.endTime != PERPETUAL,"already perpetual");
+            if (licenseId != licensee.licenseId) revert CannotExtendWithDifferentLicense();
+            if (licensee.endTime == PERPETUAL) revert CannotExtendPerpetualLicense();
 
             if (checkValidity(tokenId) || (licensee.startTime > block.timestamp))
                 //currently valid or valid in the future, ignore start and simply extend

@@ -238,7 +238,7 @@ contract LicenseProjectTest is LicensingTestBase {
         vm.startPrank(testAccount3);
         require(licenseProject.checkValidity(newTokenId) == false, "should not be valid");
         licenseProject.approve(testAccount1, newTokenId);
-        vm.expectRevert("rented token");
+        vm.expectRevert(LicenseProject.TokenAlreadyReassigned.selector);
         licenseProject.transferFrom(testAccount3, testAccount1, newTokenId);
         vm.stopPrank();
     }
