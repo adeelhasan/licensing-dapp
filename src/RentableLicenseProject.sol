@@ -3,7 +3,9 @@
 pragma solidity ^0.8.13;
 
 import "forge-std/console.sol";
+import "utility/ArrayUtils.sol";
 import "./LicenseProject.sol";
+
 
 enum RentalTimeUnit { Seconds, Minutes, Hourly, Daily, Weekly, Monthly, Annual }
 struct RentalListing {
@@ -32,6 +34,7 @@ struct StreamingLeaseInfo {
 contract RentableLicenseProject is LicenseProject {
 
     using Counters for Counters.Counter;
+    using ArrayUtils for uint256[];
 
     mapping (uint256 => mapping(uint256 => RentalListing)) public listings; //token id to listing id to listing
     mapping (uint256 => mapping(uint256 => RentalLease)) public leases; //token id to lease id to lease
@@ -134,7 +137,7 @@ contract RentableLicenseProject is LicenseProject {
         if (timeUnitPrice == 0) revert ListingCannotBeFree();
         if (allowStreaming && (timeUnit != RentalTimeUnit.Seconds)) revert StreamingRateOnlyInSeconds();
 
-        uint256 timeLength = RentableLicenseHelper.convertTimeUnitToSeconds(uint256(timeUnit), minimumUnits);
+        uint256 timeLength = _convertTimeUnitToSeconds(uint256(timeUnit), minimumUnits);
         if (((timeLength > 0) && (licensees[tokenId].endTime > 0)) && (block.timestamp + timeLength > licensees[tokenId].endTime))
                 revert ListingCannotOutlastLicense();
 
@@ -181,19 +184,9 @@ contract RentableLicenseProject is LicenseProject {
     function removeRentalListing(uint256 tokenId, uint256 listingId) external {
         if (msg.sender != ownerOf(tokenId)) revert OnlyTokenOwner();
 
-        uint256 count = listingIdsByToken[tokenId].length;
-        for (uint256 index; index < count; index++) {
-            if (listingIdsByToken[tokenId][index] == listingId) {
-                if (count-1 == index)
-                    listingIdsByToken[tokenId].pop();
-                else {
-                    listingIdsByToken[tokenId][index] = listingIdsByToken[tokenId][count-1];
-                    listingIdsByToken[tokenId].pop();                
-                }
-                emit ListingRemoved(tokenId, listingId);
-                break;
-            }
-        }
+        if (listingIdsByToken[tokenId].removeByValue(listingId))
+            emit ListingRemoved(tokenId, listingId);
+
     }
 
     /// @dev cannot overlap with an existing lease, even if its the same user's
@@ -231,7 +224,7 @@ contract RentableLicenseProject is LicenseProject {
         if (startTime == START_NOW)
             startTime = block.timestamp;
 
-        uint256 rentalTimeLength = RentableLicenseHelper.convertTimeUnitToSeconds(uint256(listing.timeUnit), timeUnitsCount);
+        uint256 rentalTimeLength = _convertTimeUnitToSeconds(uint256(listing.timeUnit), timeUnitsCount);
         uint256 endTime = startTime + rentalTimeLength;
         if ((licensees[tokenId].endTime > 0) && (endTime > licensees[tokenId].endTime))
             revert CannotRentBeyondLicenseExpiration();
@@ -345,23 +338,6 @@ contract RentableLicenseProject is LicenseProject {
         return result;
     }
 
-    /// @notice find the lease which is currently active for this token id
-    function _getCurrentLease(uint256 tokenId) internal view returns (RentalLease memory) {
-        RentalLease memory lease;
-        uint256 leasesCount = leaseIdsByToken[tokenId].length;
-        if (leasesCount > 0) {
-            for (uint256 index; index < leasesCount; index++) {
-                lease = leases[tokenId][leaseIdsByToken[tokenId][index]];
-                if (lease.renter != address(0)) {
-                    if (block.timestamp >= lease.startTime && block.timestamp <= lease.endTime) {
-                        return lease;
-                    }
-                }
-            }
-        }
-        return RentalLease(0, address(0), 0, 0, 0);
-    }
-
     /// @notice garbage collection for expired leases
     /// @dev this is separated out, so that who bears the cost is clearly delineated
     /// it's the token owner should be bearing this cost, if they don't call it
@@ -371,27 +347,33 @@ contract RentableLicenseProject is LicenseProject {
     function cleanupExpiredLeases(uint256 tokenId) external {
         RentalLease memory lease;
         uint256 leasesCount = leaseIdsByToken[tokenId].length;
-        if (leasesCount > 0) {
-            for (uint256 index; index < leasesCount; index++) {
-                lease = leases[tokenId][leaseIdsByToken[tokenId][index]];
-                if (lease.renter != address(0) && (block.timestamp > lease.endTime)) {
-                    delete leases[tokenId][lease.id];
-                    if (leasesCount-1 == index) //already on the last one
-                        leaseIdsByToken[tokenId].pop();
-                    else { //swap and then pop, but have to operate on main storage
-                        leaseIdsByToken[tokenId][index] = leaseIdsByToken[tokenId][leaseIdsByToken[tokenId].length-1];
-                        leaseIdsByToken[tokenId].pop();
-                    }
-                }
+        for (uint256 index; index < leasesCount; index++) {
+            lease = leases[tokenId][leaseIdsByToken[tokenId][index]];
+            if (lease.renter != address(0) && (block.timestamp > lease.endTime)) {
+                delete leases[tokenId][lease.id];
+                if ((leasesCount-1) != index) //already on the last one
+                    leaseIdsByToken[tokenId][index] = leaseIdsByToken[tokenId][leaseIdsByToken[tokenId].length-1];
+                leaseIdsByToken[tokenId].pop();
             }
         }
     }
 
-}
+    /// @notice find the lease which is currently active for this token id
+    function _getCurrentLease(uint256 tokenId) internal view returns (RentalLease memory) {
+        RentalLease memory lease;
+        uint256 leasesCount = leaseIdsByToken[tokenId].length;
+        for (uint256 index; index < leasesCount; index++) {
+            lease = leases[tokenId][leaseIdsByToken[tokenId][index]];
+            if (lease.renter != address(0)) {
+                if (block.timestamp >= lease.startTime && block.timestamp <= lease.endTime) {
+                    return lease;
+                }
+            }
+        }
+        return RentalLease(0, address(0), 0, 0, 0);
+    }
 
-library RentableLicenseHelper {
-
-    function convertTimeUnitToSeconds(uint256 timeUnit_, uint256 timeUnitCount) pure public returns(uint256 timeLength) {
+    function _convertTimeUnitToSeconds(uint256 timeUnit_, uint256 timeUnitCount) pure internal returns(uint256 timeLength) {
         uint256 timeUnit = uint256(timeUnit_);
         assembly {
             switch timeUnit

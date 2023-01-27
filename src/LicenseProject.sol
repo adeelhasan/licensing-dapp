@@ -7,6 +7,8 @@ import "openzeppelin-contracts/access/Ownable.sol";
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/token/ERC721/ERC721.sol";
 import "utility/FundsCollector.sol";
+import "utility/ArrayUtils.sol";
+
 
 struct Licensee {
     address user;
@@ -40,6 +42,7 @@ struct LicenseeInfo {
 contract LicenseProject is ERC721, Ownable, FundsCollector {
 
     using Counters for Counters.Counter;
+    using ArrayUtils for uint256[];
 
     event LicenseAdded(uint256 indexed licenseId);
     event LicenseBought(address indexed licensee, uint256 tokenId, uint256 licenseId);
@@ -161,6 +164,7 @@ contract LicenseProject is ERC721, Ownable, FundsCollector {
         _addDuration(newTokenId, msg.sender, licenseId, startTime, license.duration, license.maxRenewals);
 
         tokensOwned[msg.sender].push(newTokenId);
+        
 
         return newTokenId;
     }
@@ -304,17 +308,7 @@ contract LicenseProject is ERC721, Ownable, FundsCollector {
         if (from != to && to != address(0) && from != address(0)) {
             tokensOwned[to].push(firstTokenId);
 
-            uint256 count = tokensOwned[from].length;
-            for (uint256 index; index < count; index++) {
-                if (tokensOwned[from][index] == firstTokenId) {
-                    if (count-1 == index)
-                        tokensOwned[from].pop();
-                    else {
-                        tokensOwned[from][index] = tokensOwned[from][count-1];
-                        tokensOwned[from].pop();                
-                    }
-                }
-            }   
+            tokensOwned[from].removeByValue(firstTokenId);
         }
     }
 
